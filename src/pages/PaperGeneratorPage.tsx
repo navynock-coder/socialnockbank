@@ -14,7 +14,7 @@ import { useAllItems } from '@/hooks/useItems'
 import { useSchools } from '@/hooks/useSchools'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { STRANDS, STRAND_COLORS, type Strand } from '@/lib/vocab'
+import { STRANDS, STRAND_COLORS, YEARS, type Strand } from '@/lib/vocab'
 import {
   generatePaper,
   computeNaturalStrandPercents,
@@ -40,7 +40,7 @@ export default function PaperGeneratorPage() {
   )
   const [totalCount, setTotalCount] = React.useState(30)
   const [yearFrom, setYearFrom] = React.useState(62)
-  const [yearTo, setYearTo] = React.useState(68)
+  const [yearTo, setYearTo] = React.useState(69)
   const [difficultyTarget, setDifficultyTarget] = React.useState(3)
   const [avoidPaperId, setAvoidPaperId] = React.useState('')
   const [avoidLastN, setAvoidLastN] = React.useState(3)
@@ -295,10 +295,10 @@ export default function PaperGeneratorPage() {
 
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <Label>ช่วงปี (พ.ศ. 62-68)</Label>
+              <Label>ช่วงปี (พ.ศ. {YEARS[0]}-{YEARS[YEARS.length - 1]})</Label>
               <div className="flex items-center gap-2">
                 <NativeSelect value={yearFrom} onChange={(e) => setYearFrom(Number(e.target.value))}>
-                  {[62, 63, 64, 65, 66, 67, 68].map((y) => (
+                  {YEARS.map((y) => (
                     <option key={y} value={y}>
                       {y}
                     </option>
@@ -306,7 +306,7 @@ export default function PaperGeneratorPage() {
                 </NativeSelect>
                 <span className="text-sm text-muted-foreground">ถึง</span>
                 <NativeSelect value={yearTo} onChange={(e) => setYearTo(Number(e.target.value))}>
-                  {[62, 63, 64, 65, 66, 67, 68].map((y) => (
+                  {YEARS.map((y) => (
                     <option key={y} value={y}>
                       {y}
                     </option>

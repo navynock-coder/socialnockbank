@@ -203,7 +203,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>เทรนด์รายปีแยกตามสาระ (ปี 62-68)</CardTitle>
+            <CardTitle>เทรนด์รายปีแยกตามสาระ (ปี {YEARS[0]}-{YEARS[YEARS.length - 1]})</CardTitle>
           </CardHeader>
           <CardContent className="h-[420px]">
             {items.length === 0 ? (

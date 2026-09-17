@@ -41,7 +41,7 @@ export type Pack = (typeof PACKS)[number]
 
 export const DIFFICULTIES = [1, 2, 3, 4, 5] as const
 
-export const YEARS = [62, 63, 64, 65, 66, 67, 68] as const
+export const YEARS = [62, 63, 64, 65, 66, 67, 68, 69] as const
 
 export const ANSWER_TH_LABEL: Record<string, string> = {
   A: 'ก',
