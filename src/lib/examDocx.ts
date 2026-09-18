@@ -10,11 +10,17 @@ import {
   BorderStyle,
 } from 'docx'
 import { ANSWER_TH_LABEL } from '@/lib/vocab'
-import { getChoiceText } from '@/lib/paperGenerator'
+import { getChoiceText, type GeneratedItem } from '@/lib/paperGenerator'
 import type { ItemRow } from '@/types/database'
 
 const ANSWER_KEYS = ['A', 'B', 'C', 'D', 'E'] as const
 const COURSE_NAME = 'คอร์สสอบเข้า ม.1 วิชาสังคมศึกษา — ครูน็อค'
+
+interface ChoiceForDocx {
+  displayKey: string
+  text: string
+  isCorrect: boolean
+}
 
 function headerParagraphs(paperName: string, mode: 'student' | 'answer'): Paragraph[] {
   const paras: Paragraph[] = [
@@ -54,18 +60,23 @@ function headerParagraphs(paperName: string, mode: 'student' | 'answer'): Paragr
   return paras
 }
 
-function itemParagraphs(item: ItemRow, idx: number, mode: 'student' | 'answer'): Paragraph[] {
+function itemParagraphsGeneric(
+  stem: string,
+  choices: ChoiceForDocx[],
+  explanation: string | null,
+  trapType: string | null,
+  idx: number,
+  mode: 'student' | 'answer'
+): Paragraph[] {
   const paras: Paragraph[] = [
     new Paragraph({
       spacing: { before: 240, after: 80 },
-      children: [new TextRun({ text: `ข้อ ${idx + 1}. ${item.stem}`, bold: true, size: 24 })],
+      children: [new TextRun({ text: `ข้อ ${idx + 1}. ${stem}`, bold: true, size: 24 })],
     }),
   ]
 
-  for (const key of ANSWER_KEYS) {
-    const text = getChoiceText(item, key)
-    if (!text) continue
-    const isCorrect = mode === 'answer' && item.answer === key
+  for (const c of choices) {
+    const isCorrect = mode === 'answer' && c.isCorrect
     paras.push(
       new Paragraph({
         indent: { left: 360 },
@@ -73,7 +84,7 @@ function itemParagraphs(item: ItemRow, idx: number, mode: 'student' | 'answer'):
         shading: isCorrect ? { fill: 'dcfce7' } : undefined,
         children: [
           new TextRun({
-            text: `${ANSWER_TH_LABEL[key]}. ${text}`,
+            text: `${ANSWER_TH_LABEL[c.displayKey]}. ${c.text}`,
             bold: isCorrect,
             color: isCorrect ? '166534' : undefined,
             size: 22,
@@ -83,22 +94,22 @@ function itemParagraphs(item: ItemRow, idx: number, mode: 'student' | 'answer'):
     )
   }
 
-  if (mode === 'answer' && (item.explanation || item.trap_type)) {
-    if (item.trap_type) {
+  if (mode === 'answer' && (explanation || trapType)) {
+    if (trapType) {
       paras.push(
         new Paragraph({
           indent: { left: 360 },
           spacing: { before: 80 },
-          children: [new TextRun({ text: `กับดัก: ${item.trap_type}`, italics: true, size: 20, color: '374151' })],
+          children: [new TextRun({ text: `กับดัก: ${trapType}`, italics: true, size: 20, color: '374151' })],
         })
       )
     }
-    if (item.explanation) {
+    if (explanation) {
       paras.push(
         new Paragraph({
           indent: { left: 360 },
           spacing: { after: 60 },
-          children: [new TextRun({ text: item.explanation, size: 20, color: '374151' })],
+          children: [new TextRun({ text: explanation, size: 20, color: '374151' })],
         })
       )
     }
@@ -107,19 +118,17 @@ function itemParagraphs(item: ItemRow, idx: number, mode: 'student' | 'answer'):
   return paras
 }
 
-export async function buildExamDocxBlob(paperName: string, items: ItemRow[]): Promise<Blob> {
-  const studentParas: Paragraph[] = [
-    ...headerParagraphs(paperName, 'student'),
-    ...items.flatMap((item, idx) => itemParagraphs(item, idx, 'student')),
-  ]
+function itemParagraphs(item: ItemRow, idx: number, mode: 'student' | 'answer'): Paragraph[] {
+  const choices: ChoiceForDocx[] = ANSWER_KEYS.map((key) => ({
+    displayKey: key,
+    text: getChoiceText(item, key) ?? '',
+    isCorrect: item.answer === key,
+  })).filter((c) => c.text)
+  return itemParagraphsGeneric(item.stem, choices, item.explanation, item.trap_type, idx, mode)
+}
 
-  const answerParas: Paragraph[] = [
-    new Paragraph({ children: [new PageBreak()] }),
-    ...headerParagraphs(paperName, 'answer'),
-    ...items.flatMap((item, idx) => itemParagraphs(item, idx, 'answer')),
-  ]
-
-  const doc = new Document({
+function buildDoc(studentParas: Paragraph[], answerParas: Paragraph[]): Document {
+  return new Document({
     styles: {
       default: {
         document: {
@@ -130,12 +139,53 @@ export async function buildExamDocxBlob(paperName: string, items: ItemRow[]): Pr
     sections: [
       {
         properties: {},
-        children: [...studentParas, ...answerParas],
+        children: [...studentParas, new Paragraph({ children: [new PageBreak()] }), ...answerParas],
       },
     ],
   })
+}
 
-  return Packer.toBlob(doc)
+export async function buildExamDocxBlob(paperName: string, items: ItemRow[]): Promise<Blob> {
+  const studentParas: Paragraph[] = [
+    ...headerParagraphs(paperName, 'student'),
+    ...items.flatMap((item, idx) => itemParagraphs(item, idx, 'student')),
+  ]
+
+  const answerParas: Paragraph[] = [
+    ...headerParagraphs(paperName, 'answer'),
+    ...items.flatMap((item, idx) => itemParagraphs(item, idx, 'answer')),
+  ]
+
+  return Packer.toBlob(buildDoc(studentParas, answerParas))
+}
+
+// ใช้กับชุดข้อสอบที่ "สุ่มออก" จากหน้าออกชุดข้อสอบ/พิมพ์ชุดข้อสอบ — เคารพลำดับตัวเลือกที่ถูกสลับ (shuffle) ไว้แล้ว
+export async function buildGeneratedExamDocxBlob(paperName: string, items: GeneratedItem[]): Promise<Blob> {
+  const toChoices = (gi: GeneratedItem): ChoiceForDocx[] =>
+    gi.shuffle.order.map((originalKey, i) => {
+      const displayKey = ANSWER_KEYS[i]
+      return {
+        displayKey,
+        text: getChoiceText(gi.item, originalKey) ?? '',
+        isCorrect: gi.shuffle.newAnswer === displayKey,
+      }
+    })
+
+  const studentParas: Paragraph[] = [
+    ...headerParagraphs(paperName, 'student'),
+    ...items.flatMap((gi, idx) =>
+      itemParagraphsGeneric(gi.item.stem, toChoices(gi), null, null, idx, 'student')
+    ),
+  ]
+
+  const answerParas: Paragraph[] = [
+    ...headerParagraphs(paperName, 'answer'),
+    ...items.flatMap((gi, idx) =>
+      itemParagraphsGeneric(gi.item.stem, toChoices(gi), gi.item.explanation, gi.item.trap_type, idx, 'answer')
+    ),
+  ]
+
+  return Packer.toBlob(buildDoc(studentParas, answerParas))
 }
 
 export function downloadBlob(blob: Blob, filename: string) {

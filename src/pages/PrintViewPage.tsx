@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
-import { Printer } from 'lucide-react'
+import { Printer, FileDown, Loader2 } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { LoadingBlock } from '@/components/ui/spinner'
 import { supabase } from '@/lib/supabase'
 import { ANSWER_TH_LABEL } from '@/lib/vocab'
 import { getChoiceText, type GenerateResult, type GeneratedItem } from '@/lib/paperGenerator'
+import { buildGeneratedExamDocxBlob, downloadBlob } from '@/lib/examDocx'
 import type { PaperRow, ItemRow } from '@/types/database'
 
 const COURSE_NAME = 'คอร์สสอบเข้า ม.1 วิชาสังคมศึกษา — ครูน็อค'
@@ -71,6 +72,18 @@ export default function PrintViewPage() {
   const result = stateResult?.generatedResult ?? loadedResult
   const paperName = stateResult?.paperName ?? loadedName
 
+  const [downloading, setDownloading] = React.useState(false)
+  const handleDownloadDocx = async () => {
+    if (!result || result.items.length === 0) return
+    setDownloading(true)
+    try {
+      const blob = await buildGeneratedExamDocxBlob(paperName || 'ชุดข้อสอบ', result.items)
+      downloadBlob(blob, `${paperName || 'ชุดข้อสอบ'}.docx`)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
@@ -108,9 +121,13 @@ export default function PrintViewPage() {
             <TabsTrigger value="sheet">กระดาษคำตอบ</TabsTrigger>
           </TabsList>
 
-          <div className="flex justify-end no-print my-3">
+          <div className="flex justify-end gap-2 no-print my-3">
             <Button onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> พิมพ์
+            </Button>
+            <Button variant="outline" onClick={handleDownloadDocx} disabled={downloading}>
+              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+              ดาวน์โหลด Word (.docx)
             </Button>
           </div>
 
