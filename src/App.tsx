@@ -10,6 +10,7 @@ import ImportPage from '@/pages/ImportPage'
 import PaperGeneratorPage from '@/pages/PaperGeneratorPage'
 import PrintViewPage from '@/pages/PrintViewPage'
 import SchoolDnaPage from '@/pages/SchoolDnaPage'
+import ExportExamPage from '@/pages/ExportExamPage'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
               <Route path="/import" element={<ImportPage />} />
               <Route path="/generator" element={<PaperGeneratorPage />} />
               <Route path="/print" element={<PrintViewPage />} />
+              <Route path="/export" element={<ExportExamPage />} />
               <Route path="/dna" element={<SchoolDnaPage />} />
             </Route>
           </Routes>

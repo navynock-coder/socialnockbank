@@ -58,6 +58,7 @@ export default function PrintViewPage() {
       avgDifficultyActual: 0,
       shortages: [],
       poolSize: 0,
+      difficultyWarning: null,
     })
     setLoadedName(paper.paper_name)
     setLoading(false)

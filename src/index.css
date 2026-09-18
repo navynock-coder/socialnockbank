@@ -62,4 +62,5 @@ body {
   .no-print { display: none !important; }
   body { background: white !important; }
   @page { margin: 12mm; }
+  .page-break { break-after: page; page-break-after: always; }
 }

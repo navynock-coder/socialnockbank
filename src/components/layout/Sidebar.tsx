@@ -9,6 +9,7 @@ import {
   LogOut,
   GraduationCap,
   Menu,
+  FileStack,
 } from 'lucide-react'
 import * as React from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -20,6 +21,7 @@ const menuItems = [
   { to: '/import', label: 'นำเข้าข้อมูล', icon: UploadCloud },
   { to: '/generator', label: 'ออกชุดข้อสอบ', icon: FileText },
   { to: '/print', label: 'พิมพ์ชุดข้อสอบ', icon: Printer },
+  { to: '/export', label: 'ข้อสอบต้นฉบับ', icon: FileStack },
   { to: '/dna', label: 'School DNA Card', icon: Dna },
 ]
 
