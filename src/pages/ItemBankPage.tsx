@@ -13,7 +13,8 @@ import { useToast } from '@/components/ui/toast'
 import { useAllItems } from '@/hooks/useItems'
 import { useSchools } from '@/hooks/useSchools'
 import { supabase } from '@/lib/supabase'
-import { BLOOMS, DIFFICULTIES, STATUSES, STRANDS, TRAP_TYPES } from '@/lib/vocab'
+import { BLOOMS, DIFFICULTIES, ORIGINS, STATUSES, STRANDS, TRAP_TYPES } from '@/lib/vocab'
+import { itemOrigin, itemSchool } from '@/lib/labItem'
 import { ItemForm } from '@/components/items/ItemForm'
 import { ItemDetailModal } from '@/components/items/ItemDetailModal'
 import type { ItemRow } from '@/types/database'
@@ -35,6 +36,7 @@ export default function ItemBankPage() {
   const [trapType, setTrapType] = React.useState('')
   const [status, setStatus] = React.useState('')
   const [source, setSource] = React.useState('')
+  const [origin, setOrigin] = React.useState(searchParams.get('origin') ?? '')
   const [q, setQ] = React.useState('')
   const [page, setPage] = React.useState(1)
 
@@ -54,7 +56,8 @@ export default function ItemBankPage() {
   const filtered = React.useMemo(() => {
     const query = q.trim().toLowerCase()
     return items.filter((it) => {
-      if (school && it.school !== school) return false
+      if (school && itemSchool(it) !== school) return false
+      if (origin && itemOrigin(it) !== origin) return false
       if (year && it.year !== Number(year)) return false
       if (strand && it.strand !== strand) return false
       if (topic && !(it.topic ?? '').includes(topic)) return false
@@ -62,20 +65,19 @@ export default function ItemBankPage() {
       if (difficulty && it.difficulty !== Number(difficulty)) return false
       if (trapType && it.trap_type !== trapType) return false
       if (status && it.status !== status) return false
-      if (source === '__real__' && it.source) return false
-      if (source && source !== '__real__' && it.source !== source) return false
+      if (source && it.source !== source) return false
       if (query) {
         const hay = `${it.stem} ${it.explanation ?? ''} ${it.item_id}`.toLowerCase()
         if (!hay.includes(query)) return false
       }
       return true
     })
-  }, [items, school, year, strand, topic, bloom, difficulty, trapType, status, source, q])
+  }, [items, school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, q])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  React.useEffect(() => setPage(1), [school, year, strand, topic, bloom, difficulty, trapType, status, source, q])
+  React.useEffect(() => setPage(1), [school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, q])
 
   const clearFilters = () => {
     setSchool('')
@@ -87,6 +89,7 @@ export default function ItemBankPage() {
     setTrapType('')
     setStatus('')
     setSource('')
+    setOrigin('')
     setQ('')
   }
 
@@ -128,9 +131,9 @@ export default function ItemBankPage() {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10 gap-2">
             <NativeSelect value={school} onChange={(e) => setSchool(e.target.value)}>
-              <option value="">ทุกโรงเรียน</option>
+              <option value="">ทุกโรงเรียน / เป้าหมาย</option>
               {schools.map((s) => (
                 <option key={s.code} value={s.code}>
                   {s.name_th}
@@ -178,9 +181,16 @@ export default function ItemBankPage() {
                 </option>
               ))}
             </NativeSelect>
+            <NativeSelect value={origin} onChange={(e) => setOrigin(e.target.value)}>
+              <option value="">ข้อสอบจริง + คอร์ส</option>
+              {ORIGINS.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </NativeSelect>
             <NativeSelect value={source} onChange={(e) => setSource(e.target.value)}>
-              <option value="">ทุกแหล่งที่มา</option>
-              <option value="__real__">ข้อสอบจริง (ไม่ระบุคอร์ส)</option>
+              <option value="">ทุกคอร์ส/แหล่ง</option>
               {sources.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -196,7 +206,7 @@ export default function ItemBankPage() {
               ))}
             </NativeSelect>
           </div>
-          {(school || year || strand || topic || bloom || difficulty || trapType || status || source || q) && (
+          {(school || year || strand || topic || bloom || difficulty || trapType || status || source || origin || q) && (
             <button
               onClick={clearFilters}
               className="text-xs text-navy-600 flex items-center gap-1 hover:underline"

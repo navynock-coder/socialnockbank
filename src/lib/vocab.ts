@@ -63,7 +63,7 @@ export function itemGradeLevel(row: { grade_level?: string | null }): GradeLevel
   return g && (GRADE_LEVELS as readonly string[]).includes(g) ? (g as GradeLevel) : DEFAULT_GRADE_LEVEL
 }
 
-// แหล่งที่มาของข้อสอบ (ข้อความอิสระ) เช่น 'คอร์สคาถาพัน' — ค่าว่าง = ข้อสอบจริงจากโรงเรียน
+// ชื่อคอร์ส/แหล่ง (ข้อความอิสระ) เช่น 'คอร์สคาถาพัน' — ขึ้นต้นด้วย "คอร์ส" = ข้อสอบคอร์ส, ค่าว่าง = ข้อสอบจริงจากโรงเรียน
 export const SOURCE_SUGGESTIONS = ['คอร์สคาถาพัน', 'คอร์สเข้าเตรียม 69'] as const
 
 export const DIFFICULTIES = [1, 2, 3, 4, 5] as const
@@ -133,8 +133,16 @@ export type LabCourseCode = (typeof LAB_COURSE_CODES)[number]
 // คอร์สก่อนหน้าที่ใช้ตรวจ "ข้อซ้ำ" (Anti-Duplicate Guard) เป็นค่าเริ่มต้น
 export const ANTI_DUPLICATE_COURSES = ['P2C7', 'P3C8', 'P3C9'] as const
 
-// 3 ฐานข้อมูลหลักของคลัง
-export const BANK_BASES = ['เตรียมอุดมฯ', 'คอร์สติวครูน็อค', 'โรงเรียนอื่น'] as const
+// ที่มาของข้อสอบ (คอลัมน์ items.origin) — ข้อสอบจริงของโรงเรียน กับ ข้อในคอร์สติวครูน็อค
+export const ORIGINS = ['ข้อสอบจริง', 'ข้อสอบคอร์ส'] as const
+export type Origin = (typeof ORIGINS)[number]
+
+// รหัสโรงเรียนเตรียมอุดมศึกษา (ข้อสอบจริง 60–69 และเป้าหมายของคอร์ส TUC)
+export const TU_SCHOOL_CODE = 'TU'
+
+// 3 ฐานข้อมูลหลักของคลัง (คำนวณจาก origin + โรงเรียน)
+// "คอร์สเข้าเตรียม" (TUC) อยู่ในคอร์สติวครูน็อค ไม่ใช่ข้อสอบจริงของเตรียมอุดมฯ
+export const BANK_BASES = ['เตรียมอุดมฯ (ข้อสอบจริง)', 'โรงเรียนอื่น (ข้อสอบจริง)', 'คอร์สติวครูน็อค'] as const
 export type BankBase = (typeof BANK_BASES)[number]
 
 // ระดับความยาก 3 แถบสำหรับ Difficulty Meter (difficulty 1–5 ดาว)

@@ -1,6 +1,6 @@
 // ตัวช่วยอ่านข้อมูลข้อสอบสำหรับ SOCIALNOCK LAB: ล้างเลขข้อ, รหัสคอร์ส/ชุด, ฐานข้อมูล
 import type { ItemRow } from '@/types/database'
-import type { BankBase } from '@/lib/vocab'
+import { TU_SCHOOL_CODE, type BankBase, type Origin } from '@/lib/vocab'
 
 // ตัดเลขข้อที่ติดมากับโจทย์ออก เพื่อให้สลับข้อ/รันเลขใหม่ได้อิสระ
 // รองรับ: "1. ", "12) ", "(3) ", "ข้อ 4. ", "ข้อที่ 5 ", "Q6: ", "๗. " (เลขไทย)
@@ -50,12 +50,26 @@ export function itemSetCode(item: Pick<ItemRow, 'item_id' | 'set_code'>): string
   return k ? k[1] : null
 }
 
-// 3 ฐานหลัก: เตรียมอุดมฯ / คอร์สติวครูน็อค / โรงเรียนอื่น
-export function itemBase(item: Pick<ItemRow, 'item_id' | 'school' | 'source' | 'course_code'>): BankBase {
-  const src = item.source ?? ''
-  if (item.school === 'TU' || src.includes('เตรียม') || item.item_id.startsWith('TUC-')) return 'เตรียมอุดมฯ'
-  if (src.startsWith('คอร์ส') || itemCourseCode(item)) return 'คอร์สติวครูน็อค'
-  return 'โรงเรียนอื่น'
+type OriginFields = Pick<ItemRow, 'item_id' | 'school' | 'source' | 'course_code' | 'origin' | 'target_school'>
+
+// ที่มา: ใช้ค่าในฐานข้อมูลก่อน (items.origin) ถ้ายังว่าง (ยังไม่รัน migration) ให้เดาด้วยกติกาเดียวกับ trigger
+export function itemOrigin(item: OriginFields): Origin {
+  if (item.origin === 'ข้อสอบจริง' || item.origin === 'ข้อสอบคอร์ส') return item.origin
+  return itemCourseCode(item) || (item.source ?? '').startsWith('คอร์ส') ? 'ข้อสอบคอร์ส' : 'ข้อสอบจริง'
+}
+
+// โรงเรียนที่ข้อนี้เกี่ยวข้อง: ข้อสอบจริง = โรงเรียนที่ออกข้อสอบ, ข้อสอบคอร์ส = โรงเรียนเป้าหมายของคอร์ส
+export function itemSchool(item: OriginFields): string | null {
+  if (itemOrigin(item) === 'ข้อสอบจริง') return item.school ?? null
+  if (item.target_school) return item.target_school
+  if (itemCourseCode(item) === 'TUC' || (item.source ?? '').includes('เตรียม')) return TU_SCHOOL_CODE
+  return null
+}
+
+// 3 ฐานหลัก: เตรียมอุดมฯ (ข้อสอบจริง) / โรงเรียนอื่น (ข้อสอบจริง) / คอร์สติวครูน็อค
+export function itemBase(item: OriginFields): BankBase {
+  if (itemOrigin(item) === 'ข้อสอบคอร์ส') return 'คอร์สติวครูน็อค'
+  return item.school === TU_SCHOOL_CODE ? 'เตรียมอุดมฯ (ข้อสอบจริง)' : 'โรงเรียนอื่น (ข้อสอบจริง)'
 }
 
 export function choiceList(item: ItemRow): { key: string; text: string }[] {

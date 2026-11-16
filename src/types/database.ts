@@ -35,6 +35,9 @@ export interface ItemRow {
   // รหัสคอร์ส/ชุดของ SOCIALNOCK LAB เช่น P3C8 / EP05 (ข้อเก่าอาจว่าง ให้อ่านผ่าน itemCourseCode())
   course_code?: string | null
   set_code?: string | null
+  // ที่มา 'ข้อสอบจริง' | 'ข้อสอบคอร์ส' และโรงเรียนเป้าหมายของคอร์ส (มีหลังรัน 20261117_item_origin.sql — อ่านผ่าน itemOrigin()/itemSchool())
+  origin?: string | null
+  target_school?: string | null
   // ข้อที่ต่อยอด/ดัดแปลงจากข้อเดิม (Exam Remix Workshop)
   is_remixed?: boolean | null
   parent_item_id?: string | null
