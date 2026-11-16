@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { GradeLevelProvider } from '@/contexts/GradeLevelContext'
 import { ToastProvider } from '@/components/ui/toast'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -16,6 +17,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <GradeLevelProvider>
         <ToastProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -36,6 +38,7 @@ export default function App() {
             </Route>
           </Routes>
         </ToastProvider>
+        </GradeLevelProvider>
       </AuthProvider>
     </BrowserRouter>
   )
