@@ -1,3 +1,4 @@
+import { schoolsWithItems } from '@/lib/labItem'
 import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { Printer, FileStack, FileDown, Loader2 } from 'lucide-react'
@@ -82,7 +83,7 @@ export default function ExportExamPage() {
             <label className="text-xs font-medium text-muted-foreground">โรงเรียน</label>
             <NativeSelect value={school} onChange={(e) => setSchool(e.target.value)} className="min-w-[220px]">
               <option value="">— เลือกโรงเรียน —</option>
-              {schools.map((s) => (
+              {schoolsWithItems(schools, items, 'real').map((s) => (
                 <option key={s.code} value={s.code}>
                   {s.name_th}
                 </option>

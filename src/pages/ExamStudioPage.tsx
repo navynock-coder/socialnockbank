@@ -32,7 +32,7 @@ import {
   type Bloom,
   type Strand,
 } from '@/lib/vocab'
-import { itemBase, itemCourseCode, itemSchool } from '@/lib/labItem'
+import { itemBase, itemCourseCode, itemSchool, schoolsWithItems } from '@/lib/labItem'
 import { PRESET_BLUEPRINTS, autoPickByBlueprint, blueprintFromSchool, buildDuplicateIndex, type Blueprint } from '@/lib/examStudio'
 import type { ItemRow, PaperRow } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -313,7 +313,7 @@ export default function ExamStudioPage() {
                       <Label className="text-xs" title="ข้อสอบจริง = โรงเรียนที่ออกข้อสอบ · ข้อสอบคอร์ส = โรงเรียนเป้าหมายของคอร์ส">โรงเรียน / เป้าหมาย</Label>
                       <NativeSelect className="h-8" value={school} onChange={(e) => setSchool(e.target.value)}>
                         <option value="">ทั้งหมด</option>
-                        {schools.map((s) => <option key={s.code} value={s.code}>{s.code}</option>)}
+                        {schoolsWithItems(schools, items, 'any').map((s) => <option key={s.code} value={s.code}>{s.name_th}</option>)}
                       </NativeSelect>
                     </div>
                   </div>
@@ -361,7 +361,7 @@ export default function ExamStudioPage() {
                     <div className="flex items-center gap-1 rounded-lg border border-dashed border-border px-2">
                       <NativeSelect className="h-8 w-36 text-xs" value={dnaSchool} onChange={(e) => setDnaSchool(e.target.value)}>
                         <option value="">DNA จากข้อสอบจริง…</option>
-                        {schools.map((s) => <option key={s.code} value={s.code}>{s.name_th}</option>)}
+                        {schoolsWithItems(schools, items, 'real').map((s) => <option key={s.code} value={s.code}>{s.name_th}</option>)}
                       </NativeSelect>
                       <Button size="sm" variant="outline" onClick={dnaBlueprint}>ใช้</Button>
                     </div>

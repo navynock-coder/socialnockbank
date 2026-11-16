@@ -1,3 +1,5 @@
+import { schoolsWithItems } from '@/lib/labItem'
+import { useGradeLevel } from '@/contexts/GradeLevelContext'
 import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -33,6 +35,7 @@ function heatColor(pct: number) {
 export default function DashboardPage() {
   const { items, loading } = useAllItems()
   const { schools, loading: schoolsLoading } = useSchools()
+  const { gradeLevel } = useGradeLevel()
   const navigate = useNavigate()
   const [paperCount, setPaperCount] = React.useState<number | null>(null)
   const printRef = React.useRef<HTMLDivElement>(null)
@@ -40,11 +43,16 @@ export default function DashboardPage() {
   React.useEffect(() => {
     supabase
       .from('papers')
-      .select('id', { count: 'exact', head: true })
-      .then(({ count }) => setPaperCount(count ?? 0))
-  }, [])
+      .select('config')
+      .then(({ data }) =>
+        setPaperCount(
+          (data ?? []).filter((p) => ((p.config as { gradeLevel?: string } | null)?.gradeLevel ?? 'ป.6') === gradeLevel).length
+        )
+      )
+  }, [gradeLevel])
 
-  const activeSchools = schools.filter((s) => s.is_active)
+  // เฉพาะโรงเรียนที่มีข้อสอบจริงในระดับชั้นนี้ (เช่น ม.3 = เตรียมอุดมฯ อย่างเดียว)
+  const activeSchools = schoolsWithItems(schools.filter((s) => s.is_active), items, 'real')
 
   // ----- Heatmap: strand (row) x school (col) -> % ของข้อในสาระนั้น เทียบกับข้อทั้งหมดของโรงเรียนนั้น
   const heatmap = React.useMemo(() => {

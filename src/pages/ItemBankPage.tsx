@@ -14,7 +14,7 @@ import { useAllItems } from '@/hooks/useItems'
 import { useSchools } from '@/hooks/useSchools'
 import { supabase } from '@/lib/supabase'
 import { BLOOMS, DIFFICULTIES, GRADE_LEVELS, GRADE_LEVEL_LABEL, itemGradeLevel, ORIGINS, STATUSES, STRANDS, TRAP_TYPES } from '@/lib/vocab'
-import { itemCourseCode, itemOrigin, itemSchool, itemSetCode } from '@/lib/labItem'
+import { itemCourseCode, itemOrigin, itemSchool, itemSetCode, schoolsWithItems } from '@/lib/labItem'
 import { ItemForm } from '@/components/items/ItemForm'
 import { ItemDetailModal } from '@/components/items/ItemDetailModal'
 import type { ItemRow } from '@/types/database'
@@ -171,7 +171,7 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
             )}
             <NativeSelect value={school} onChange={(e) => setSchool(e.target.value)}>
               <option value="">ทุกโรงเรียน / เป้าหมาย</option>
-              {schools.map((s) => (
+              {schoolsWithItems(schools, items, 'any').map((s) => (
                 <option key={s.code} value={s.code}>
                   {s.name_th}
                 </option>

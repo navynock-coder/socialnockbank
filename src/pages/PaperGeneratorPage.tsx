@@ -1,3 +1,4 @@
+import { schoolsWithItems } from '@/lib/labItem'
 import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -211,7 +212,7 @@ export default function PaperGeneratorPage() {
             <div>
               <Label>เลือกโรงเรียน{mode === 'multi' ? ' (เลือกได้หลายแห่ง)' : ''}</Label>
               <div className="flex flex-wrap gap-2">
-                {schools.map((s) => {
+                {schoolsWithItems(schools, items, 'real').map((s) => {
                   const active = schoolCodes.includes(s.code)
                   return (
                     <button

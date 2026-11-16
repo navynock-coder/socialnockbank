@@ -72,6 +72,17 @@ export function itemBase(item: OriginFields): BankBase {
   return item.school === TU_SCHOOL_CODE ? 'เตรียมอุดมฯ (ข้อสอบจริง)' : 'โรงเรียนอื่น (ข้อสอบจริง)'
 }
 
+// เฉพาะโรงเรียนที่มีข้อสอบใน items (ใช้ซ่อนโรงเรียนที่ไม่มีข้อในระดับชั้นที่เลือก)
+// mode 'real' = นับเฉพาะข้อสอบจริงของโรงเรียน, 'any' = นับโรงเรียนเป้าหมายของคอร์สด้วย
+export function schoolsWithItems<S extends { code: string }>(schools: S[], items: ItemRow[], mode: 'real' | 'any' = 'real'): S[] {
+  const used = new Set<string>()
+  for (const it of items) {
+    const code = mode === 'real' ? (itemOrigin(it) === 'ข้อสอบจริง' ? it.school : null) : itemSchool(it)
+    if (code) used.add(code)
+  }
+  return schools.filter((s) => used.has(s.code))
+}
+
 export function choiceList(item: ItemRow): { key: string; text: string }[] {
   const pairs: [string, string | null][] = [
     ['A', item.choice_a],
