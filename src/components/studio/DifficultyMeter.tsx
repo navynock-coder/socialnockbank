@@ -9,20 +9,22 @@ export function DifficultyMeter({
   target,
   compact,
   className,
+  label = 'Difficulty Meter',
 }: {
   items: ItemRow[]
   target?: Record<DifficultyBand, number> | null
   compact?: boolean
   className?: string
+  label?: string
 }) {
   const m = difficultyMeter(items)
   return (
     <div className={cn('space-y-1.5', className)}>
       {!compact && (
         <div className="flex items-center justify-between text-xs text-navy-700">
-          <span className="font-semibold">Difficulty Meter</span>
+          <span className="font-semibold">{label}</span>
           <span>
-            {m.total} ข้อ · เฉลี่ย {m.avgStars.toFixed(1)} ★
+            ในชุด {m.total} ข้อ · เฉลี่ย {m.avgStars.toFixed(1)} ★
           </span>
         </div>
       )}

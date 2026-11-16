@@ -1,3 +1,5 @@
+import { useGradeLevel } from '@/contexts/GradeLevelContext'
+import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { Printer, FileDown, Loader2 } from 'lucide-react'
@@ -15,6 +17,7 @@ import type { PaperRow, ItemRow } from '@/types/database'
 const COURSE_NAME = 'คอร์สสอบเข้า ม.1 วิชาสังคมศึกษา — ครูน็อค'
 
 export default function PrintViewPage() {
+  const { gradeLevel } = useGradeLevel()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const stateResult = (location.state as { generatedResult?: GenerateResult; paperName?: string } | null) ?? null
@@ -85,12 +88,15 @@ export default function PrintViewPage() {
     }
   }
 
+  // แสดงเฉพาะชุดของระดับชั้นที่เลือกบนแถบซ้าย (ชุดเก่าที่ไม่ระบุชั้น = ป.6)
+  const gradePapers = papers.filter((p) => ((p.config as { gradeLevel?: string } | null)?.gradeLevel ?? 'ป.6') === gradeLevel)
+
   return (
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-navy-800">พิมพ์ชุดข้อสอบ</h1>
-          <p className="text-sm text-muted-foreground">เลือกชุดข้อสอบที่บันทึกไว้ หรือมาจากหน้าออกชุดข้อสอบโดยตรง</p>
+          <h1 className="text-xl font-bold text-navy-800">พิมพ์ชุดที่จัดไว้ <GradeBadge /></h1>
+          <p className="text-sm text-muted-foreground">เลือกชุดข้อสอบที่บันทึกไว้ จากห้องจัดชุดหรือจัดชุดด่วน</p>
         </div>
         {!stateResult && (
           <NativeSelect
@@ -99,7 +105,7 @@ export default function PrintViewPage() {
             onChange={(e) => setSelectedPaperId(e.target.value)}
           >
             <option value="">— เลือกชุดข้อสอบที่บันทึกไว้ —</option>
-            {papers.map((p) => (
+            {gradePapers.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.paper_name} ({p.total_items} ข้อ)
               </option>

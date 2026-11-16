@@ -1,3 +1,4 @@
+import { schoolsWithItems } from '@/lib/labItem'
 import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
@@ -71,13 +72,13 @@ export default function SchoolDnaPage() {
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-navy-800">School DNA Card <GradeBadge /></h1>
+          <h1 className="text-xl font-bold text-navy-800">DNA ข้อสอบโรงเรียน <GradeBadge /></h1>
           <p className="text-sm text-muted-foreground">วิเคราะห์ลักษณะเฉพาะของข้อสอบแต่ละสนามสอบ</p>
         </div>
         <div className="flex gap-2">
           <NativeSelect className="max-w-xs" value={schoolCode} onChange={(e) => setSchoolCode(e.target.value)}>
             <option value="">— เลือกโรงเรียน —</option>
-            {schools.map((s) => (
+            {schoolsWithItems(schools, items, 'real').map((s) => (
               <option key={s.code} value={s.code}>
                 {s.name_th}
               </option>

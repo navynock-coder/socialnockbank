@@ -1,3 +1,5 @@
+import { useGradeLevel } from '@/contexts/GradeLevelContext'
+import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { RefreshCw, Users, ShoppingBag, BarChart3, Download } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,6 +28,7 @@ function stats(rows: ExamAttemptRow[]) {
 
 // ผลสอบจากประตูจับเวลา: แยกคะแนน "ผู้ซื้อ" ออกจาก "นักเรียนในคอร์ส" แต่รวมสถิติความยากรายข้อ
 export default function GateResultsPage() {
+  const { gradeLevel } = useGradeLevel()
   const { toast } = useToast()
   const [papers, setPapers] = React.useState<PaperRow[]>([])
   const [paperId, setPaperId] = React.useState('')
@@ -97,17 +100,20 @@ export default function GateResultsPage() {
     )
   }
 
+  // แสดงเฉพาะชุดของระดับชั้นที่เลือกบนแถบซ้าย (ชุดเก่าที่ไม่ระบุชั้น = ป.6)
+  const gradePapers = papers.filter((p) => ((p.config as { gradeLevel?: string } | null)?.gradeLevel ?? 'ป.6') === gradeLevel)
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-navy-800">ผลสอบประตูจับเวลา</h1>
+          <h1 className="text-xl font-bold text-navy-800">ผลสอบประตูจับเวลา <GradeBadge /></h1>
           <p className="text-sm text-muted-foreground">คะแนนแยกกลุ่ม ไม่ปนค่าเฉลี่ยคอร์ส · ความยากรายข้อรวมทุกกลุ่ม</p>
         </div>
         <div className="flex gap-2">
           <NativeSelect className="w-72" value={paperId} onChange={(e) => setPaperId(e.target.value)}>
             <option value="">— เลือกชุดข้อสอบ —</option>
-            {papers.map((p) => <option key={p.id} value={p.id}>{p.paper_name}</option>)}
+            {gradePapers.map((p) => <option key={p.id} value={p.id}>{p.paper_name}</option>)}
           </NativeSelect>
           <Button variant="outline" onClick={refreshP} title="คำนวณ p-value จากผลสอบจริงกลับเข้าคลัง"><RefreshCw className="h-4 w-4" /> อัปเดตค่า p</Button>
         </div>

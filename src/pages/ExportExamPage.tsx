@@ -1,3 +1,4 @@
+import { schoolsWithItems } from '@/lib/labItem'
 import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { Printer, FileStack, FileDown, Loader2 } from 'lucide-react'
@@ -68,7 +69,7 @@ export default function ExportExamPage() {
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-navy-800 flex items-center gap-2">
-            <FileStack className="h-5 w-5" /> ข้อสอบต้นฉบับ ตามโรงเรียน/ปี <GradeBadge />
+            <FileStack className="h-5 w-5" /> พิมพ์ข้อสอบจริงทั้งฉบับ (ตามโรงเรียน/ปี) <GradeBadge />
           </h1>
           <p className="text-sm text-muted-foreground">
             รวบรวมข้อสอบทุกข้อในคลังของโรงเรียนและปีที่เลือก มาจัดเป็นชุดข้อสอบพร้อมพิมพ์ (เหมือนชุดข้อสอบจริงของปีนั้น)
@@ -82,7 +83,7 @@ export default function ExportExamPage() {
             <label className="text-xs font-medium text-muted-foreground">โรงเรียน</label>
             <NativeSelect value={school} onChange={(e) => setSchool(e.target.value)} className="min-w-[220px]">
               <option value="">— เลือกโรงเรียน —</option>
-              {schools.map((s) => (
+              {schoolsWithItems(schools, items, 'real').map((s) => (
                 <option key={s.code} value={s.code}>
                   {s.name_th}
                 </option>

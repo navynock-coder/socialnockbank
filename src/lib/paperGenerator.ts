@@ -241,3 +241,54 @@ export function getChoiceText(item: ItemRow, originalKey: string): string | null
   }
   return map[originalKey] ?? null
 }
+
+// ชุดด่วนจากผลกรองในหน้าคลัง: สุ่ม count ข้อจาก pool (เฉพาะข้อใช้งานที่กรอกครบ)
+// balanceStrands = กระจายตามสัดส่วนสาระที่มีใน pool, ไม่เช่นนั้นสุ่มรวม
+export function quickPaperFromPool(pool: ItemRow[], count: number, balanceStrands = true): GenerateResult {
+  const picked: ItemRow[] = []
+  if (balanceStrands) {
+    const byStrand = new Map<string, ItemRow[]>()
+    for (const it of pool) byStrand.set(it.strand, [...(byStrand.get(it.strand) ?? []), it])
+    const groups = [...byStrand.entries()].map(([strand, list]) => ({ strand, list: shuffleArray(list) }))
+    // จัดโควตาตามสัดส่วน (largest remainder) แล้วเติมส่วนที่ขาดจากกลุ่มที่ยังเหลือ
+    const want = Math.min(count, pool.length)
+    const raw = groups.map((g) => (g.list.length / (pool.length || 1)) * want)
+    const quota = raw.map(Math.floor)
+    let rest = want - quota.reduce((a, b) => a + b, 0)
+    raw
+      .map((v, i) => ({ i, f: v - Math.floor(v) }))
+      .sort((a, b) => b.f - a.f)
+      .forEach(({ i }) => {
+        if (rest > 0 && quota[i] < groups[i].list.length) {
+          quota[i]++
+          rest--
+        }
+      })
+    groups.forEach((g, i) => picked.push(...g.list.slice(0, quota[i])))
+  } else {
+    picked.push(...shuffleArray(pool).slice(0, count))
+  }
+  const ordered = [...picked].sort(
+    (a, b) => STRANDS.indexOf(a.strand as Strand) - STRANDS.indexOf(b.strand as Strand) || a.item_id.localeCompare(b.item_id)
+  )
+  return itemsToResult(ordered, pool.length)
+}
+
+// แปลงรายการข้อ (เรียงแล้ว) เป็นผลลัพธ์สำหรับหน้าพิมพ์ ไม่สลับตัวเลือก
+export function itemsToResult(items: ItemRow[], poolSize = items.length): GenerateResult {
+  const total = items.length
+  return {
+    items: items.map((item) => ({
+      item,
+      shuffle: { order: ['A', 'B', 'C', 'D', 'E'].filter((k) => !!getChoiceText(item, k)), newAnswer: item.answer },
+    })),
+    breakdown: STRANDS.map((strand) => {
+      const n = items.filter((it) => it.strand === strand).length
+      return { strand, targetPct: 0, targetCount: n, actualCount: n, actualPct: total ? Math.round((n / total) * 100) : 0 }
+    }),
+    avgDifficultyActual: total ? items.reduce((a, it) => a + (it.difficulty ?? 3), 0) / total : 0,
+    shortages: [],
+    poolSize,
+    difficultyWarning: null,
+  }
+}

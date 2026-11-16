@@ -1,3 +1,4 @@
+import { schoolsWithItems } from '@/lib/labItem'
 import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -177,7 +178,7 @@ export default function PaperGeneratorPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-navy-800">ออกชุดข้อสอบ <GradeBadge /></h1>
+        <h1 className="text-xl font-bold text-navy-800">จัดชุดด่วนตามโรงเรียน <GradeBadge /></h1>
         <p className="text-sm text-muted-foreground">ตั้งค่าเงื่อนไขแล้วให้ระบบสุ่มข้อสอบตามสัดส่วนที่กำหนด</p>
       </div>
 
@@ -211,7 +212,7 @@ export default function PaperGeneratorPage() {
             <div>
               <Label>เลือกโรงเรียน{mode === 'multi' ? ' (เลือกได้หลายแห่ง)' : ''}</Label>
               <div className="flex flex-wrap gap-2">
-                {schools.map((s) => {
+                {schoolsWithItems(schools, items, 'real').map((s) => {
                   const active = schoolCodes.includes(s.code)
                   return (
                     <button

@@ -32,7 +32,7 @@ import {
   type Bloom,
   type Strand,
 } from '@/lib/vocab'
-import { itemBase, itemCourseCode } from '@/lib/labItem'
+import { hasPlaceholderChoice, itemBase, itemCourseCode, itemSchool, schoolsWithItems } from '@/lib/labItem'
 import { PRESET_BLUEPRINTS, autoPickByBlueprint, blueprintFromSchool, buildDuplicateIndex, type Blueprint } from '@/lib/examStudio'
 import type { ItemRow, PaperRow } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -100,13 +100,14 @@ export default function ExamStudioPage() {
     const needle = q.trim().toLowerCase()
     return items.filter((it) => {
       if (it.status !== 'ใช้งาน') return false
+      if (hasPlaceholderChoice(it)) return false // ข้อที่ตัวเลือกยังเป็นแม่แบบ ไม่ให้หลุดเข้าชุด
       if (bases.length && !bases.includes(itemBase(it))) return false
       if (strands.length && !strands.includes(it.strand as Strand)) return false
       if (blooms.length && !blooms.includes(it.bloom as Bloom)) return false
       const d = it.difficulty ?? 3
       if (d < starMin || d > starMax) return false
       if (course && itemCourseCode(it) !== course) return false
-      if (school && it.school !== school) return false
+      if (school && itemSchool(it) !== school) return false
       if (oftenWrong && !(it.p_value != null && it.p_value < 0.5)) return false
       if (onlyRemixed && !it.is_remixed) return false
       if (hideDup && dupIndex.check(it).length > 0) return false
@@ -123,6 +124,14 @@ export default function ExamStudioPage() {
     () => active.item_ids.map((id) => itemMap.get(id)).filter((x): x is ItemRow => !!x),
     [active, itemMap]
   )
+  // จำนวนข้อ (สถานะใช้งาน) ต่อฐาน ในระดับชั้นนี้ — โชว์บนชิป ฐานไหนว่างจะเห็นทันที
+  const baseCounts = React.useMemo(() => {
+    const c = Object.fromEntries(BANK_BASES.map((b) => [b, 0])) as Record<BankBase, number>
+    items.forEach((it) => {
+      if (it.status === 'ใช้งาน') c[itemBase(it)]++
+    })
+    return c
+  }, [items])
   const courseOptions = React.useMemo(() => {
     const s = new Set<string>(LAB_COURSE_CODES)
     items.forEach((it) => {
@@ -266,7 +275,7 @@ export default function ExamStudioPage() {
                   <div>
                     <Label className="text-xs">ฐานข้อมูล</Label>
                     <div className="flex flex-wrap gap-1.5">
-                      {BANK_BASES.map((b) => <Chip key={b} active={bases.includes(b)} onClick={() => setBases(toggleIn(bases, b))}>{b}</Chip>)}
+                      {BANK_BASES.map((b) => <Chip key={b} active={bases.includes(b)} onClick={() => setBases(toggleIn(bases, b))}>{b} ({baseCounts[b].toLocaleString()})</Chip>)}
                     </div>
                   </div>
                   <div>
@@ -302,10 +311,10 @@ export default function ExamStudioPage() {
                       </NativeSelect>
                     </div>
                     <div>
-                      <Label className="text-xs">โรงเรียน</Label>
+                      <Label className="text-xs" title="ข้อสอบจริง = โรงเรียนที่ออกข้อสอบ · ข้อสอบคอร์ส = โรงเรียนเป้าหมายของคอร์ส">โรงเรียน / เป้าหมาย</Label>
                       <NativeSelect className="h-8" value={school} onChange={(e) => setSchool(e.target.value)}>
                         <option value="">ทั้งหมด</option>
-                        {schools.map((s) => <option key={s.code} value={s.code}>{s.code}</option>)}
+                        {schoolsWithItems(schools, items, 'any').map((s) => <option key={s.code} value={s.code}>{s.name_th}</option>)}
                       </NativeSelect>
                     </div>
                   </div>
@@ -353,7 +362,7 @@ export default function ExamStudioPage() {
                     <div className="flex items-center gap-1 rounded-lg border border-dashed border-border px-2">
                       <NativeSelect className="h-8 w-36 text-xs" value={dnaSchool} onChange={(e) => setDnaSchool(e.target.value)}>
                         <option value="">DNA จากข้อสอบจริง…</option>
-                        {schools.map((s) => <option key={s.code} value={s.code}>{s.name_th}</option>)}
+                        {schoolsWithItems(schools, items, 'real').map((s) => <option key={s.code} value={s.code}>{s.name_th}</option>)}
                       </NativeSelect>
                       <Button size="sm" variant="outline" onClick={dnaBlueprint}>ใช้</Button>
                     </div>
@@ -363,7 +372,7 @@ export default function ExamStudioPage() {
                       {bp.name}: {STRANDS.map((s) => `${s} ${bp.strandPct[s]}%`).join(' · ')} | Bloom {BLOOMS.map((b) => `${b} ${bp.bloomPct[b]}%`).join(' · ')}
                     </p>
                   )}
-                  <DifficultyMeter items={activeItems} target={bp?.bandPct ?? null} />
+                  <DifficultyMeter items={activeItems} target={bp?.bandPct ?? null} label={`Difficulty Meter ของ ${active.set_code}`} />
                 </CardContent>
               </Card>
 
