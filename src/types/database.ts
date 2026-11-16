@@ -28,6 +28,10 @@ export interface ItemRow {
   trap_type: string | null
   media_url: string | null
   stimulus_id: string | null
+  // ระดับชั้น (ป.6, ม.1–ม.6) — optional เพราะแถวเก่าอาจยังไม่มีค่า ให้อ่านผ่าน itemGradeLevel()
+  grade_level?: string | null
+  // แหล่งที่มา/คอร์ส เช่น 'คอร์สคาถาพัน' (ว่าง = ข้อสอบจริงจากโรงเรียน)
+  source?: string | null
   status: string
   p_value: number | null
   times_used: number
