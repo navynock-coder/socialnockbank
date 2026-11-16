@@ -2,12 +2,13 @@ import * as React from 'react'
 import { UploadCloud, Download, CheckCircle2, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/input'
+import { Input, Label, Textarea } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/contexts/AuthContext'
+import { useGradeLevel } from '@/contexts/GradeLevelContext'
 import { supabase } from '@/lib/supabase'
-import { IMPORT_TEMPLATE_COLUMNS } from '@/lib/vocab'
+import { GRADE_LEVEL_LABEL, IMPORT_TEMPLATE_COLUMNS, SOURCE_SUGGESTIONS } from '@/lib/vocab'
 import {
   buildTemplateTSV,
   parseTSV,
@@ -33,6 +34,8 @@ const severityLabel: Record<RowSeverity, string> = {
 
 export default function ImportPage() {
   const { user } = useAuth()
+  const { gradeLevel } = useGradeLevel()
+  const [batchSource, setBatchSource] = React.useState('')
   const { toast } = useToast()
   const [raw, setRaw] = React.useState('')
   const [rows, setRows] = React.useState<ImportRow[] | null>(null)
@@ -102,7 +105,7 @@ export default function ImportPage() {
       return
     }
     setImporting(true)
-    const payload = toImport.map((r) => toItemInsertPayload(r.data, user?.id))
+    const payload = toImport.map((r) => toItemInsertPayload(r.data, user?.id, gradeLevel, batchSource))
     const { error } = await supabase.from('items').insert(payload)
     setImporting(false)
     if (error) {
@@ -127,7 +130,7 @@ export default function ImportPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-bold text-navy-800">นำเข้าข้อมูล</h1>
-        <p className="text-sm text-muted-foreground">วางข้อมูล TSV หรืออัปโหลดไฟล์ .tsv / .csv ตามเทมเพลต 21 คอลัมน์</p>
+        <p className="text-sm text-muted-foreground">วางข้อมูล TSV หรืออัปโหลดไฟล์ .tsv / .csv ตามเทมเพลต (คอลัมน์ grade_level ไม่บังคับ — ถ้าเว้นว่างจะบันทึกเป็นระดับ <b>{GRADE_LEVEL_LABEL[gradeLevel]}</b> ตามที่เลือกในเมนูซ้าย)</p>
       </div>
 
       <Card>
@@ -156,12 +159,27 @@ export default function ImportPage() {
               />
             </label>
             <Button variant="outline" onClick={downloadTemplate}>
-              <Download className="h-4 w-4" /> ดาวน์โหลดเทมเพลต TSV (21 คอลัมน์)
+              <Download className="h-4 w-4" /> ดาวน์โหลดเทมเพลต TSV ({IMPORT_TEMPLATE_COLUMNS.length} คอลัมน์)
             </Button>
             <Button onClick={check} disabled={checking}>
               {checking && <Loader2 className="h-4 w-4 animate-spin" />}
               ตรวจสอบก่อนนำเข้า
             </Button>
+          </div>
+          <div className="max-w-md">
+            <Label>แหล่งที่มา/คอร์ส ของข้อสอบชุดนี้ (ไม่บังคับ)</Label>
+            <Input
+              list="source-suggestions"
+              placeholder="เช่น คอร์สคาถาพัน — เว้นว่างถ้าเป็นข้อสอบจริงจากโรงเรียน"
+              value={batchSource}
+              onChange={(e) => setBatchSource(e.target.value)}
+            />
+            <datalist id="source-suggestions">
+              {SOURCE_SUGGESTIONS.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+            <p className="text-xs text-muted-foreground mt-1">ใช้กับทุกแถวที่คอลัมน์ source ว่าง</p>
           </div>
           <p className="text-xs text-muted-foreground">
             คอลัมน์ที่ต้องมี: {IMPORT_TEMPLATE_COLUMNS.join(', ')}
