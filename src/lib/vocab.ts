@@ -39,9 +39,34 @@ export const PACKS = [
 ] as const
 export type Pack = (typeof PACKS)[number]
 
+// ระดับชั้น — แยกคลังข้อสอบตามระดับชั้นของผู้เรียน
+// 'ป.6' = ข้อสอบระดับ ป.6 (สอบเข้า ม.1) ซึ่งเป็นข้อมูลเดิมทั้งหมดในคลัง
+// ข้อสอบที่ไม่มีค่า grade_level (ข้อมูลเก่าก่อนเพิ่มคอลัมน์) ให้ถือเป็น 'ป.6' เสมอ
+export const GRADE_LEVELS = ['ป.6', 'ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6'] as const
+export type GradeLevel = (typeof GRADE_LEVELS)[number]
+export const DEFAULT_GRADE_LEVEL: GradeLevel = 'ป.6'
+
+export const GRADE_LEVEL_LABEL: Record<GradeLevel, string> = {
+  'ป.6': 'ป.6 (สอบเข้า ม.1)',
+  'ม.1': 'ม.1',
+  'ม.2': 'ม.2',
+  'ม.3': 'ม.3 (สอบเข้า ม.4)',
+  'ม.4': 'ม.4',
+  'ม.5': 'ม.5',
+  'ม.6': 'ม.6 (สอบเข้ามหาวิทยาลัย)',
+}
+
+export function itemGradeLevel(row: { grade_level?: string | null }): GradeLevel {
+  const g = row.grade_level
+  return g && (GRADE_LEVELS as readonly string[]).includes(g) ? (g as GradeLevel) : DEFAULT_GRADE_LEVEL
+}
+
+// แหล่งที่มาของข้อสอบ (ข้อความอิสระ) เช่น 'คอร์สคาถาพัน' — ค่าว่าง = ข้อสอบจริงจากโรงเรียน
+export const SOURCE_SUGGESTIONS = ['คอร์สคาถาพัน', 'คอร์สเข้าเตรียม 69'] as const
+
 export const DIFFICULTIES = [1, 2, 3, 4, 5] as const
 
-export const YEARS = [62, 63, 64, 65, 66, 67, 68, 69] as const
+export const YEARS = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69] as const
 
 export const ANSWER_TH_LABEL: Record<string, string> = {
   A: 'ก',
@@ -86,4 +111,6 @@ export const IMPORT_TEMPLATE_COLUMNS = [
   'trap_type',
   'media_url',
   'stimulus_id',
+  'grade_level',
+  'source',
 ] as const
