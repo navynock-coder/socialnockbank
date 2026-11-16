@@ -53,6 +53,8 @@ create table if not exists items (
   trap_type text,
   media_url text,
   stimulus_id text,
+  grade_level text not null default 'ป.6',
+  source text,
   status text default 'ใช้งาน',
   p_value numeric,
   times_used int default 0,
@@ -64,6 +66,7 @@ create table if not exists items (
   constraint chk_bloom check (bloom in ('จำ','เข้าใจ','วิเคราะห์')),
   constraint chk_trap_type check (trap_type is null or trap_type in ('ไม่ใช่/ยกเว้น','ถูกครึ่งเดียว','อ่านตาราง-แผนภูมิ','สลับตัวเลข-ศักราช','คำใกล้เคียง','ไม่มีกับดัก')),
   constraint chk_status check (status in ('ใช้งาน','พักไว้','เก็บประวัติ')),
+  constraint chk_grade_level check (grade_level in ('ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6')),
   constraint chk_answer check (answer in ('A','B','C','D','E')),
   constraint chk_pack check (pack is null or pack in ('PP62-63','PP63-64','PP64-65','PP65-66','PP66-67','PP67-68'))
 );
@@ -72,6 +75,7 @@ create index if not exists idx_items_school on items(school);
 create index if not exists idx_items_strand on items(strand);
 create index if not exists idx_items_year on items(year);
 create index if not exists idx_items_status on items(status);
+create index if not exists idx_items_grade_level on items(grade_level);
 create index if not exists idx_items_user on items(user_id);
 
 -- ============================================================================
