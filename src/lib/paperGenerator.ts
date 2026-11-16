@@ -219,7 +219,7 @@ function availableChoiceKeys(item: ItemRow): string[] {
   return keys.length > 0 ? keys : [...ANSWERS]
 }
 
-function identityShuffle(item: ItemRow): ShuffleResult {
+export function identityShuffle(item: ItemRow): ShuffleResult {
   return { order: availableChoiceKeys(item), newAnswer: item.answer }
 }
 

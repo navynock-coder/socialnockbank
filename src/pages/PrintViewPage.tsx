@@ -6,13 +6,11 @@ import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/input'
 import { LoadingBlock } from '@/components/ui/spinner'
 import { supabase } from '@/lib/supabase'
-import { ANSWER_TH_LABEL } from '@/lib/vocab'
-import { cleanStem } from '@/lib/labItem'
+import { LAB_COURSE_LINE, LAB_LOGO_URL, TH_CH, choicesAreShort, strandCounts, strandMeta, toLabQuestions } from '@/lib/labDoc'
+import '@/styles/labPrint.css'
 import { getChoiceText, type GenerateResult, type GeneratedItem } from '@/lib/paperGenerator'
 import { buildGeneratedExamDocxBlob, downloadBlob } from '@/lib/examDocx'
 import type { PaperRow, ItemRow } from '@/types/database'
-
-const COURSE_NAME = 'คอร์สสอบเข้า ม.1 วิชาสังคมศึกษา — ครูน็อค'
 
 export default function PrintViewPage() {
   const location = useLocation()
@@ -147,118 +145,153 @@ export default function PrintViewPage() {
   )
 }
 
-function Watermark() {
+function LabHead({ paperName, tag, isKey, count }: { paperName: string; tag: string; isKey?: boolean; count: number }) {
   return (
-    <div
-      className="pointer-events-none select-none absolute inset-0 flex items-center justify-center overflow-hidden"
-      style={{ zIndex: 0 }}
-    >
-      <span className="text-6xl font-bold text-navy-900/5 rotate-[-20deg] whitespace-nowrap">
-        สังคมศึกษา ครูน็อค
-      </span>
+    <div className="lab-head">
+      <img className="lab-logo" src={LAB_LOGO_URL} alt="" />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="ex">{paperName || 'ชุดข้อสอบ'}</div>
+        <div className="sub">{[LAB_COURSE_LINE, `${count} ข้อ`].join(' · ')}</div>
+      </div>
+      <div className={isKey ? 'tag key' : 'tag'}>{tag}</div>
     </div>
   )
 }
 
-function PrintSheet({
-  paperName,
-  mode,
-  items,
-}: {
-  paperName: string
-  mode: 'student' | 'answer'
-  items: GeneratedItem[]
-}) {
+function LabFoot({ paperName, label }: { paperName: string; label: string }) {
   return (
-    <div className="bg-white rounded-lg border border-border p-8 md:p-10 relative overflow-hidden print:border-0 print:rounded-none text-[16px] leading-relaxed">
-      <Watermark />
-      <div className="relative z-10">
-        <div className="text-center mb-6 border-b-2 border-navy-800 pb-4">
-          <h2 className="font-bold text-lg text-navy-900">{COURSE_NAME}</h2>
-          <p className="font-semibold text-navy-800 mt-1">{paperName}</p>
-          {mode === 'student' && (
-            <div className="flex justify-center gap-8 mt-3 text-sm">
-              <span>ชื่อ-สกุล ....................................................</span>
-              <span>เลขที่ .............</span>
-              <span>เวลาสอบ .............. นาที</span>
+    <div className="lab-foot">
+      <span>{[paperName, label].filter(Boolean).join(' · ')}</span>
+      <span>SOCIALNOCK · คลังข้อสอบ SocialBank</span>
+    </div>
+  )
+}
+
+// แม่แบบเดียวกับไฟล์ข้อสอบ/เฉลยที่ SOCIALNOCK LAB ส่งออก
+function PrintSheet({ paperName, mode, items }: { paperName: string; mode: 'student' | 'answer'; items: GeneratedItem[] }) {
+  const qs = toLabQuestions(items)
+  const isKey = mode === 'answer'
+  return (
+    <div className="lab-doc">
+      <img className="lab-wm" src={LAB_LOGO_URL} alt="" />
+      <LabHead paperName={paperName} tag={isKey ? 'เฉลยสำหรับครู' : 'แบบทดสอบ'} isKey={isKey} count={qs.length} />
+      {!isKey ? (
+        <>
+          <div className="lab-id">
+            <span>ชื่อ–สกุล ......................................................................</span>
+            <span>เลขที่ ..........</span>
+            <span>ห้อง ..........</span>
+            <div className="lab-score">
+              <div className="l">คะแนน</div>
+              <div className="box" />
+              <div className="l">เต็ม {qs.length}</div>
+            </div>
+          </div>
+          <div className="lab-howto">
+            คำชี้แจง: ข้อสอบมี {qs.length} ข้อ ให้เลือกคำตอบที่ถูกที่สุดเพียงข้อเดียว แล้วกากบาท ✕ ทับตัวอักษรหน้าคำตอบ
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="lab-sec">ตารางวิเคราะห์ข้อสอบ</div>
+          <div className="lab-blue">
+            {strandCounts(qs).map(([s, n]) => {
+              const m = strandMeta(s)
+              return (
+                <span key={s} style={{ borderColor: m?.color ?? '#9aa5b5' }}>
+                  <b style={{ color: m?.color ?? '#4b5568' }}>{m?.code ?? 'อื่น ๆ'}</b> {s} {n} ข้อ
+                </span>
+              )
+            })}
+          </div>
+        </>
+      )}
+      {qs.map((q) => (
+        <div key={q.no} className="lab-q">
+          <div className="lab-qt">
+            <b>{q.no}.</b>
+            <span>{q.stem}</span>
+          </div>
+          {q.mediaUrl && <img className="lab-img" src={q.mediaUrl} alt="" />}
+          <div className={choicesAreShort(q.choices) ? 'lab-ch two' : 'lab-ch'}>
+            {q.choices.map((c, j) => (
+              <div key={j} className={isKey && j === q.answer ? 'ok' : ''}>
+                <i>{TH_CH[j]}</i>
+                <span>{c}</span>
+              </div>
+            ))}
+          </div>
+          {isKey && (q.explanation || q.trap) && (
+            <div className="lab-why">
+              {q.trap && <b>กับดัก: {q.trap} · </b>}
+              {q.explanation}
             </div>
           )}
-          {mode === 'answer' && <p className="text-sm text-green-700 font-medium mt-1">ฉบับเฉลยละเอียด (สำหรับผู้สอนเท่านั้น)</p>}
         </div>
-
-        <div className="space-y-6">
-          {items.map((gi, idx) => (
-            <div key={gi.item.id}>
-              <p className="font-medium text-navy-900">
-                ข้อ {idx + 1}. {cleanStem(gi.item.stem)}
-              </p>
-              {gi.item.media_url && (
-                <img
-                  src={gi.item.media_url}
-                  alt=""
-                  className="mt-2 rounded border border-border"
-                  style={{ maxWidth: '70%' }}
-                />
-              )}
-              <div className="mt-2 space-y-1 pl-2">
-                {gi.shuffle.order.map((originalKey, i) => {
-                  const displayKey = ['A', 'B', 'C', 'D', 'E'][i]
-                  const text = getChoiceText(gi.item, originalKey)
-                  const isCorrect = mode === 'answer' && gi.shuffle.newAnswer === displayKey
-                  return (
-                    <p
-                      key={displayKey}
-                      className={isCorrect ? 'bg-green-100 rounded px-2 py-0.5 font-medium text-green-800' : ''}
-                    >
-                      {ANSWER_TH_LABEL[displayKey]}. {text}
-                    </p>
-                  )
-                })}
-              </div>
-              {mode === 'answer' && (gi.item.explanation || gi.item.trap_type) && (
-                <div className="mt-2 bg-gray-100 rounded p-3 text-sm text-navy-700">
-                  {gi.item.trap_type && <p className="font-medium">กับดัก: {gi.item.trap_type}</p>}
-                  {gi.item.explanation && <p className="mt-1 whitespace-pre-wrap">{gi.item.explanation}</p>}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      ))}
+      {isKey && (
+        <>
+          <div className="lab-sec">สรุปเฉลย</div>
+          <table className="lab-tbl">
+            <colgroup>
+              <col style={{ width: 40 }} />
+              <col style={{ width: 44 }} />
+              <col />
+              <col style={{ width: 150 }} />
+              <col style={{ width: 120 }} />
+            </colgroup>
+            <thead>
+              <tr><th>ข้อ</th><th>ตอบ</th><th>คำตอบที่ถูก</th><th>สาระ · หัวข้อ</th><th>รหัสข้อสอบ</th></tr>
+            </thead>
+            <tbody>
+              {qs.map((q) => {
+                const m = strandMeta(q.strand)
+                return (
+                  <tr key={q.no}>
+                    <td>{q.no}</td>
+                    <td className="a">{TH_CH[q.answer] ?? '-'}</td>
+                    <td>{q.choices[q.answer] ?? ''}</td>
+                    <td className="s">{[m?.code, q.topic].filter(Boolean).join(' · ') || '–'}</td>
+                    <td className="w">{q.itemId}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+      <LabFoot paperName={paperName} label={isKey ? 'เฉลยสำหรับครู' : 'แบบทดสอบ'} />
     </div>
   )
 }
 
 function AnswerBubbleSheet({ paperName, items }: { paperName: string; items: GeneratedItem[] }) {
-  const cols = ['ก', 'ข', 'ค', 'ง', 'จ']
   return (
-    <div className="bg-white rounded-lg border border-border p-8 relative overflow-hidden print:border-0">
-      <Watermark />
-      <div className="relative z-10">
-        <div className="text-center mb-6 border-b-2 border-navy-800 pb-4">
-          <h2 className="font-bold text-lg text-navy-900">{COURSE_NAME}</h2>
-          <p className="font-semibold text-navy-800 mt-1">{paperName} — กระดาษคำตอบ</p>
-          <div className="flex justify-center gap-8 mt-3 text-sm">
-            <span>ชื่อ-สกุล ....................................................</span>
-            <span>เลขที่ .............</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-2 text-sm">
-          {items.map((_, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <span className="w-6 text-right font-medium">{idx + 1}.</span>
-              {cols.map((c) => (
-                <span
-                  key={c}
-                  className="h-6 w-6 rounded-full border border-navy-700 flex items-center justify-center text-xs"
-                >
-                  {c}
-                </span>
-              ))}
-            </div>
-          ))}
+    <div className="lab-doc">
+      <img className="lab-wm" src={LAB_LOGO_URL} alt="" />
+      <LabHead paperName={paperName} tag="กระดาษคำตอบ" count={items.length} />
+      <div className="lab-id">
+        <span>ชื่อ–สกุล ......................................................................</span>
+        <span>เลขที่ ..........</span>
+        <span>ห้อง ..........</span>
+        <div className="lab-score">
+          <div className="l">คะแนน</div>
+          <div className="box" />
+          <div className="l">เต็ม {items.length}</div>
         </div>
       </div>
+      <div className="lab-howto">ฝนหรือกากบาท ✕ ทับวงกลมของคำตอบที่เลือก ข้อละหนึ่งคำตอบ</div>
+      <div className="lab-bubbles">
+        {items.map((gi, idx) => (
+          <div key={idx}>
+            <b>{idx + 1}.</b>
+            {TH_CH.slice(0, Math.max(4, gi.shuffle.order.length)).map((c) => (
+              <i key={c}>{c}</i>
+            ))}
+          </div>
+        ))}
+      </div>
+      <LabFoot paperName={paperName} label="กระดาษคำตอบ" />
     </div>
   )
 }

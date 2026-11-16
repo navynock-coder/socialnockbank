@@ -1,234 +1,219 @@
-// สร้างไฟล์ Word (.docx) จากชุดข้อสอบต้นฉบับ ฝั่ง client ล้วนๆ (ไม่ต้องมี backend)
-// ใช้ไลบรารี `docx` (ทำงานในเบราว์เซอร์ได้ผ่าน Packer.toBlob)
+// สร้างไฟล์ Word (.docx) ฝั่ง client — หน้าตาเดียวกับไฟล์ Word ที่ SOCIALNOCK LAB ส่งออก
+// (TH Sarabun New 16 pt, หัวกระดาษมีโลโก้ + ชื่อชุด + เส้นใต้, ช่องชื่อ/คะแนน, คำชี้แจงพื้นเทา, ตัวเลือกสั้นจัด 2 คอลัมน์)
 import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
   AlignmentType,
-  PageBreak,
   BorderStyle,
+  Document,
+  ImageRun,
+  Packer,
+  PageBreak,
+  Paragraph,
+  ShadingType,
+  Table,
+  TableCell,
+  TableRow,
+  TabStopType,
+  TextRun,
+  WidthType,
 } from 'docx'
-import { ANSWER_TH_LABEL } from '@/lib/vocab'
-import { cleanStem } from '@/lib/labItem'
-import { getChoiceText, type GeneratedItem } from '@/lib/paperGenerator'
+import { identityShuffle, type GeneratedItem } from '@/lib/paperGenerator'
+import { LAB_COURSE_LINE, LAB_LOGO_URL, TH_CH, choicesAreShort, strandCounts, strandMeta, toLabQuestions, type LabQuestion } from '@/lib/labDoc'
 import type { ItemRow } from '@/types/database'
 
-const ANSWER_KEYS = ['A', 'B', 'C', 'D', 'E'] as const
-const COURSE_NAME = 'คอร์สสอบเข้า ม.1 วิชาสังคมศึกษา — ครูน็อค'
-
-interface ChoiceForDocx {
-  displayKey: string
-  text: string
-  isCorrect: boolean
-}
+const FONT = 'TH Sarabun New'
+const GRAY = '4B5568'
+const GREEN = '155F35'
 
 export interface DocxOptions {
   durationMinutes?: number
   answerSheet?: boolean
 }
 
-function headerParagraphs(paperName: string, mode: 'student' | 'answer', opts: DocxOptions = {}): Paragraph[] {
-  const paras: Paragraph[] = [
+let logoCache: Promise<ArrayBuffer | null> | null = null
+function loadLogo(): Promise<ArrayBuffer | null> {
+  logoCache ??= fetch(LAB_LOGO_URL)
+    .then((r) => (r.ok ? r.arrayBuffer() : null))
+    .catch(() => null)
+  return logoCache
+}
+
+const run = (text: string, o: { bold?: boolean; size?: number; color?: string } = {}) =>
+  new TextRun({ text, bold: o.bold, size: o.size, color: o.color, font: FONT })
+
+function header(title: string, sub: string, count: number, logo: ArrayBuffer | null, opts: DocxOptions = {}): Paragraph[] {
+  return [
     new Paragraph({
-      alignment: AlignmentType.CENTER,
-      border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: '1e3a5f' } },
-      spacing: { after: 200 },
-      children: [new TextRun({ text: COURSE_NAME, bold: true, size: 28 })],
+      spacing: { after: 0 },
+      children: [
+        ...(logo ? [new ImageRun({ type: 'png', data: logo, transformation: { width: 48, height: 48 } }), run('  ')] : []),
+        run(title, { bold: true, size: 40 }),
+      ],
     }),
     new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 100 },
-      children: [new TextRun({ text: paperName, bold: true, size: 24 })],
+      spacing: { after: 160 },
+      border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: '172033', space: 4 } },
+      children: [
+        run([LAB_COURSE_LINE, sub, `${count} ข้อ`, opts.durationMinutes ? `เวลา ${opts.durationMinutes} นาที` : ''].filter(Boolean).join(' · '), {
+          size: 26,
+          color: GRAY,
+        }),
+      ],
     }),
   ]
-  if (mode === 'student') {
-    paras.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 300 },
-        children: [
-          new TextRun({ text: 'ชื่อ-สกุล .................................................... ', size: 20 }),
-          new TextRun({ text: 'เลขที่ ............. ', size: 20 }),
-          new TextRun({ text: opts.durationMinutes ? `เวลาสอบ ${opts.durationMinutes} นาที` : 'เวลาสอบ .............. นาที', size: 20 }),
-        ],
-      })
-    )
+}
+
+function idBlock(count: number): Paragraph[] {
+  return [
+    new Paragraph({
+      spacing: { after: 40 },
+      tabStops: [
+        { type: TabStopType.LEFT, position: 5600 },
+        { type: TabStopType.LEFT, position: 7400 },
+      ],
+      children: [run('ชื่อ–สกุล ............................................'), new TextRun({ text: '\tเลขที่ ........\tห้อง ........', font: FONT })],
+    }),
+    new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 120 }, children: [run(`คะแนน ........ / ${count}`, { bold: true })] }),
+  ]
+}
+
+const shaded = (text: string) =>
+  new Paragraph({
+    spacing: { after: 160 },
+    shading: { type: ShadingType.CLEAR, color: 'auto', fill: 'F3F5F8' },
+    children: [run(text, { size: 28 })],
+  })
+
+function questionParas(q: LabQuestion, isKey: boolean): Paragraph[] {
+  const out: Paragraph[] = [
+    new Paragraph({
+      keepNext: true,
+      spacing: { before: 80, after: 40 },
+      indent: { left: 454, hanging: 454 },
+      tabStops: [{ type: TabStopType.LEFT, position: 454 }],
+      children: [run(`${q.no}.`, { bold: true }), new TextRun({ text: '\t', font: FONT }), run(q.stem)],
+    }),
+  ]
+  const choiceRun = (j: number) => {
+    const ok = isKey && j === q.answer
+    return run(`${TH_CH[j]}. ${q.choices[j]}`, { bold: ok, color: ok ? GREEN : undefined })
+  }
+  if (choicesAreShort(q.choices)) {
+    for (let j = 0; j < q.choices.length; j += 2) {
+      out.push(
+        new Paragraph({
+          keepNext: j + 2 < q.choices.length,
+          spacing: { after: 20 },
+          indent: { left: 454 },
+          tabStops: [{ type: TabStopType.LEFT, position: 4800 }],
+          children: [choiceRun(j), ...(q.choices[j + 1] != null ? [new TextRun({ text: '\t', font: FONT }), choiceRun(j + 1)] : [])],
+        })
+      )
+    }
   } else {
-    paras.push(
+    q.choices.forEach((_, j) =>
+      out.push(new Paragraph({ keepNext: j < q.choices.length - 1, spacing: { after: 20 }, indent: { left: 454 }, children: [choiceRun(j)] }))
+    )
+  }
+  if (isKey && (q.explanation || q.trap)) {
+    out.push(
       new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 300 },
-        children: [new TextRun({ text: 'ฉบับเฉลยละเอียด (สำหรับผู้สอนเท่านั้น)', color: '15803d', bold: true, size: 20 })],
+        spacing: { before: 40, after: 60 },
+        indent: { left: 454 },
+        shading: { type: ShadingType.CLEAR, color: 'auto', fill: 'F3F5F8' },
+        children: [...(q.trap ? [run(`กับดัก: ${q.trap} · `, { bold: true, size: 26, color: 'A86500' })] : []), run(q.explanation, { size: 26, color: GRAY })],
       })
     )
   }
-  return paras
+  return out
 }
 
-function itemParagraphsGeneric(
-  stem: string,
-  choices: ChoiceForDocx[],
-  explanation: string | null,
-  trapType: string | null,
-  idx: number,
-  mode: 'student' | 'answer'
-): Paragraph[] {
-  const paras: Paragraph[] = [
-    new Paragraph({
-      spacing: { before: 240, after: 80 },
-      children: [new TextRun({ text: `ข้อ ${idx + 1}. ${cleanStem(stem)}`, bold: true, size: 24 })],
-    }),
-  ]
-
-  for (const c of choices) {
-    const isCorrect = mode === 'answer' && c.isCorrect
-    paras.push(
-      new Paragraph({
-        indent: { left: 360 },
-        spacing: { after: 40 },
-        shading: isCorrect ? { fill: 'dcfce7' } : undefined,
-        children: [
-          new TextRun({
-            text: `${ANSWER_TH_LABEL[c.displayKey]}. ${c.text}`,
-            bold: isCorrect,
-            color: isCorrect ? '166534' : undefined,
-            size: 22,
-          }),
-        ],
-      })
-    )
-  }
-
-  if (mode === 'answer' && (explanation || trapType)) {
-    if (trapType) {
-      paras.push(
-        new Paragraph({
-          indent: { left: 360 },
-          spacing: { before: 80 },
-          children: [new TextRun({ text: `กับดัก: ${trapType}`, italics: true, size: 20, color: '374151' })],
-        })
-      )
-    }
-    if (explanation) {
-      paras.push(
-        new Paragraph({
-          indent: { left: 360 },
-          spacing: { after: 60 },
-          children: [new TextRun({ text: explanation, size: 20, color: '374151' })],
-        })
-      )
-    }
-  }
-
-  return paras
-}
-
-function itemParagraphs(item: ItemRow, idx: number, mode: 'student' | 'answer'): Paragraph[] {
-  const choices: ChoiceForDocx[] = ANSWER_KEYS.map((key) => ({
-    displayKey: key,
-    text: getChoiceText(item, key) ?? '',
-    isCorrect: item.answer === key,
-  })).filter((c) => c.text)
-  return itemParagraphsGeneric(item.stem, choices, item.explanation, item.trap_type, idx, mode)
-}
-
-// กระดาษคำตอบ: แถวละ 1 ข้อ ( ก ) ( ข ) ( ค ) ( ง )
-function answerSheetParagraphs(paperName: string, count: number): Paragraph[] {
-  const paras: Paragraph[] = [
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: '1e3a5f' } },
-      spacing: { after: 200 },
-      children: [new TextRun({ text: `${paperName} — กระดาษคำตอบ`, bold: true, size: 26 })],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 240 },
-      children: [new TextRun({ text: 'ชื่อ-สกุล .................................................... เลขที่ .............', size: 20 })],
-    }),
-  ]
-  for (let i = 0; i < count; i++) {
-    paras.push(
-      new Paragraph({
-        spacing: { after: 40 },
-        children: [new TextRun({ text: `${String(i + 1).padStart(3, ' ')}.   ( ก )   ( ข )   ( ค )   ( ง )   ( จ )`, size: 22 })],
-      })
-    )
-  }
-  return paras
-}
-
-function buildDoc(studentParas: Paragraph[], answerParas: Paragraph[], sheetParas: Paragraph[] = []): Document {
-  return new Document({
-    styles: {
-      default: {
-        document: {
-          run: { font: 'TH Sarabun New', size: 22 },
-        },
-      },
-    },
-    sections: [
-      {
-        properties: {},
-        children: [
-          ...studentParas,
-          ...(sheetParas.length ? [new Paragraph({ children: [new PageBreak()] }), ...sheetParas] : []),
-          new Paragraph({ children: [new PageBreak()] }),
-          ...answerParas,
-        ],
-      },
+function keyTable(qs: LabQuestion[]): Table {
+  const widths = [600, 600, 3900, 1950, 2300]
+  const border = { style: BorderStyle.SINGLE, size: 4, color: 'C9D1DC' }
+  const cell = (text: string, w: number, head = false, color?: string) =>
+    new TableCell({
+      width: { size: w, type: WidthType.DXA },
+      shading: head ? { type: ShadingType.CLEAR, color: 'auto', fill: 'EEF1F5' } : undefined,
+      children: [new Paragraph({ spacing: { after: 0 }, children: [run(text, { bold: head || !!color, size: head ? 26 : 28, color })] })],
+    })
+  return new Table({
+    width: { size: widths.reduce((a, b) => a + b, 0), type: WidthType.DXA },
+    columnWidths: widths,
+    borders: { top: border, bottom: border, left: border, right: border, insideHorizontal: border, insideVertical: border },
+    rows: [
+      new TableRow({ tableHeader: true, children: ['ข้อ', 'ตอบ', 'คำตอบที่ถูก', 'สาระ · หัวข้อ', 'รหัสข้อสอบ'].map((h, i) => cell(h, widths[i], true)) }),
+      ...qs.map(
+        (q) =>
+          new TableRow({
+            cantSplit: true,
+            children: [
+              cell(String(q.no), widths[0]),
+              cell(TH_CH[q.answer] ?? '-', widths[1], false, GREEN),
+              cell(q.choices[q.answer] ?? '', widths[2]),
+              cell([strandMeta(q.strand)?.code, q.topic].filter(Boolean).join(' · ') || '–', widths[3]),
+              cell(q.itemId, widths[4]),
+            ],
+          })
+      ),
     ],
   })
 }
 
+function answerSheetParas(title: string, count: number, logo: ArrayBuffer | null): Paragraph[] {
+  const paras = [...header(title, 'กระดาษคำตอบ', count, logo), ...idBlock(count), shaded('กากบาท ✕ ทับวงเล็บของคำตอบที่เลือก ข้อละหนึ่งคำตอบ')]
+  for (let i = 0; i < count; i++) {
+    paras.push(new Paragraph({ spacing: { after: 20 }, children: [run(`${String(i + 1).padStart(3, ' ')}.    ( ก )    ( ข )    ( ค )    ( ง )    ( จ )`)] }))
+  }
+  return paras
+}
+
+async function buildLabDocx(title: string, qs: LabQuestion[], opts: DocxOptions = {}): Promise<Blob> {
+  const logo = await loadLogo()
+  const name = title || 'ชุดข้อสอบ'
+  const student = [
+    ...header(name, 'แบบทดสอบ', qs.length, logo, opts),
+    ...idBlock(qs.length),
+    shaded(`คำชี้แจง: ข้อสอบมี ${qs.length} ข้อ ให้เลือกคำตอบที่ถูกที่สุดเพียงข้อเดียว แล้วกากบาท ✕ ทับตัวอักษรหน้าคำตอบ`),
+    ...qs.flatMap((q) => questionParas(q, false)),
+  ]
+  const key = [
+    ...header(name, 'เฉลยสำหรับครู', qs.length, logo),
+    new Paragraph({
+      spacing: { after: 120 },
+      children: [
+        run('ตารางวิเคราะห์ข้อสอบ: ' + strandCounts(qs).map(([s, n]) => `${strandMeta(s)?.code ?? ''} ${s} ${n} ข้อ`.trim()).join(' · '), { bold: true, size: 28 }),
+      ],
+    }),
+    ...qs.flatMap((q) => questionParas(q, true)),
+    new Paragraph({ spacing: { before: 200, after: 80 }, children: [run('สรุปเฉลย', { bold: true, size: 32 })] }),
+  ]
+  const brk = () => new Paragraph({ children: [new PageBreak()] })
+  const doc = new Document({
+    styles: { default: { document: { run: { font: FONT, size: 32 }, paragraph: { spacing: { after: 60 } } } } },
+    sections: [
+      {
+        properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, right: 1134, bottom: 1134, left: 1418 } } },
+        children: [
+          ...student,
+          ...(opts.answerSheet ? [brk(), ...answerSheetParas(name, qs.length, logo)] : []),
+          brk(),
+          ...key,
+          keyTable(qs),
+        ],
+      },
+    ],
+  })
+  return Packer.toBlob(doc)
+}
+
 export async function buildExamDocxBlob(paperName: string, items: ItemRow[]): Promise<Blob> {
-  const studentParas: Paragraph[] = [
-    ...headerParagraphs(paperName, 'student'),
-    ...items.flatMap((item, idx) => itemParagraphs(item, idx, 'student')),
-  ]
-
-  const answerParas: Paragraph[] = [
-    ...headerParagraphs(paperName, 'answer'),
-    ...items.flatMap((item, idx) => itemParagraphs(item, idx, 'answer')),
-  ]
-
-  return Packer.toBlob(buildDoc(studentParas, answerParas))
+  const generated: GeneratedItem[] = items.map((item) => ({ item, shuffle: identityShuffle(item) }))
+  return buildLabDocx(paperName, toLabQuestions(generated))
 }
 
 // ใช้กับชุดข้อสอบที่ "สุ่มออก" จากหน้าออกชุดข้อสอบ/พิมพ์ชุดข้อสอบ — เคารพลำดับตัวเลือกที่ถูกสลับ (shuffle) ไว้แล้ว
-export async function buildGeneratedExamDocxBlob(
-  paperName: string,
-  items: GeneratedItem[],
-  opts: DocxOptions = {}
-): Promise<Blob> {
-  const toChoices = (gi: GeneratedItem): ChoiceForDocx[] =>
-    gi.shuffle.order.map((originalKey, i) => {
-      const displayKey = ANSWER_KEYS[i]
-      return {
-        displayKey,
-        text: getChoiceText(gi.item, originalKey) ?? '',
-        isCorrect: gi.shuffle.newAnswer === displayKey,
-      }
-    })
-
-  const studentParas: Paragraph[] = [
-    ...headerParagraphs(paperName, 'student', opts),
-    ...items.flatMap((gi, idx) =>
-      itemParagraphsGeneric(gi.item.stem, toChoices(gi), null, null, idx, 'student')
-    ),
-  ]
-
-  const answerParas: Paragraph[] = [
-    ...headerParagraphs(paperName, 'answer'),
-    ...items.flatMap((gi, idx) =>
-      itemParagraphsGeneric(gi.item.stem, toChoices(gi), gi.item.explanation, gi.item.trap_type, idx, 'answer')
-    ),
-  ]
-
-  return Packer.toBlob(
-    buildDoc(studentParas, answerParas, opts.answerSheet ? answerSheetParagraphs(paperName, items.length) : [])
-  )
+export async function buildGeneratedExamDocxBlob(paperName: string, items: GeneratedItem[], opts: DocxOptions = {}): Promise<Blob> {
+  return buildLabDocx(paperName, toLabQuestions(items), opts)
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
