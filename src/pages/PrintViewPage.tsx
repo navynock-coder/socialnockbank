@@ -7,6 +7,7 @@ import { NativeSelect } from '@/components/ui/input'
 import { LoadingBlock } from '@/components/ui/spinner'
 import { supabase } from '@/lib/supabase'
 import { ANSWER_TH_LABEL } from '@/lib/vocab'
+import { cleanStem } from '@/lib/labItem'
 import { getChoiceText, type GenerateResult, type GeneratedItem } from '@/lib/paperGenerator'
 import { buildGeneratedExamDocxBlob, downloadBlob } from '@/lib/examDocx'
 import type { PaperRow, ItemRow } from '@/types/database'
@@ -189,7 +190,7 @@ function PrintSheet({
           {items.map((gi, idx) => (
             <div key={gi.item.id}>
               <p className="font-medium text-navy-900">
-                ข้อ {idx + 1}. {gi.item.stem}
+                ข้อ {idx + 1}. {cleanStem(gi.item.stem)}
               </p>
               {gi.item.media_url && (
                 <img

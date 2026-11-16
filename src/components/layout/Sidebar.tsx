@@ -10,6 +10,7 @@ import {
   GraduationCap,
   Menu,
   FileStack,
+  Timer,
 } from 'lucide-react'
 import * as React from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -25,6 +26,7 @@ const menuItems = [
   { to: '/print', label: 'พิมพ์ชุดข้อสอบ', icon: Printer },
   { to: '/export', label: 'ข้อสอบต้นฉบับ', icon: FileStack },
   { to: '/dna', label: 'School DNA Card', icon: Dna },
+  { to: '/gate-results', label: 'ผลสอบประตูจับเวลา', icon: Timer },
 ]
 
 export function Sidebar() {
@@ -63,6 +65,20 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <NavLink
+          to="/studio"
+          onClick={() => setOpen(false)}
+          className={({ isActive }) =>
+            cn(
+              'mb-2 flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold border transition-colors',
+              isActive
+                ? 'bg-gold-400 text-navy-900 border-gold-300 shadow'
+                : 'border-gold-400/60 text-gold-300 hover:bg-gold-400/10'
+            )
+          }
+        >
+          <span className="truncate">🏛️ ห้องคลังข้อสอบ SOCIALBANK</span>
+        </NavLink>
         {menuItems.map((item) => (
           <NavLink
             key={item.to}

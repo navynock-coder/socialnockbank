@@ -223,7 +223,7 @@ function identityShuffle(item: ItemRow): ShuffleResult {
   return { order: availableChoiceKeys(item), newAnswer: item.answer }
 }
 
-function shuffleChoicesFor(item: ItemRow): ShuffleResult {
+export function shuffleChoicesFor(item: ItemRow): ShuffleResult {
   const keys = availableChoiceKeys(item)
   const order = shuffleArray(keys)
   const newIndex = order.indexOf(item.answer)
