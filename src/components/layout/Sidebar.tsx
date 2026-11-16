@@ -12,6 +12,7 @@ import {
   FileStack,
   Timer,
   Landmark,
+  Library,
 } from 'lucide-react'
 import * as React from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -25,7 +26,8 @@ const menuGroups: { title: string | null; items: { to: string; label: string; ic
   {
     title: 'คลังข้อสอบ',
     items: [
-      { to: '/items', label: 'ค้นหา / แก้ไขข้อสอบ', icon: Database },
+      { to: '/items', label: 'คลังระดับชั้นนี้', icon: Database },
+      { to: '/bank', label: 'คลังรวม (ทุกชั้น)', icon: Library },
       { to: '/import', label: 'นำเข้าข้อสอบ', icon: UploadCloud },
     ],
   },

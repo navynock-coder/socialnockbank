@@ -13,16 +13,27 @@ import { useToast } from '@/components/ui/toast'
 import { useAllItems } from '@/hooks/useItems'
 import { useSchools } from '@/hooks/useSchools'
 import { supabase } from '@/lib/supabase'
-import { BLOOMS, DIFFICULTIES, ORIGINS, STATUSES, STRANDS, TRAP_TYPES } from '@/lib/vocab'
-import { itemOrigin, itemSchool } from '@/lib/labItem'
+import { BLOOMS, DIFFICULTIES, GRADE_LEVELS, GRADE_LEVEL_LABEL, itemGradeLevel, ORIGINS, STATUSES, STRANDS, TRAP_TYPES } from '@/lib/vocab'
+import { itemCourseCode, itemOrigin, itemSchool, itemSetCode } from '@/lib/labItem'
 import { ItemForm } from '@/components/items/ItemForm'
 import { ItemDetailModal } from '@/components/items/ItemDetailModal'
 import type { ItemRow } from '@/types/database'
 
 const PAGE_SIZE = 50
 
-export default function ItemBankPage() {
-  const { items, loading, reload } = useAllItems()
+// ป้าย "ที่มา" ในตาราง: ข้อสอบจริง → ชื่อโรงเรียน, ข้อสอบคอร์ส → รหัสคอร์ส/ชุด (+ โรงเรียนเป้าหมาย)
+function originLabel(it: ItemRow, schoolMap: Map<string, { name_th: string }>) {
+  const school = itemSchool(it)
+  const schoolName = school ? (schoolMap.get(school)?.name_th ?? school) : ''
+  if (itemOrigin(it) === 'ข้อสอบจริง') return schoolName ? `ข้อสอบจริง · ${schoolName}` : 'ข้อสอบจริง'
+  const course = itemCourseCode(it) ?? it.source ?? 'คอร์ส'
+  const set = itemSetCode(it)
+  return `คอร์ส ${course}${set ? `/${set}` : ''}${schoolName ? ` → ${schoolName}` : ''}`
+}
+
+// allGrades = "คลังรวม": ข้อสอบทุกระดับชั้นและทุกที่มาในตารางเดียว (หน้า /bank)
+export default function ItemBankPage({ allGrades = false }: { allGrades?: boolean }) {
+  const { items, loading, reload } = useAllItems({ allGrades })
   const { schools, schoolMap } = useSchools()
   const { toast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -37,6 +48,7 @@ export default function ItemBankPage() {
   const [status, setStatus] = React.useState('')
   const [source, setSource] = React.useState('')
   const [origin, setOrigin] = React.useState(searchParams.get('origin') ?? '')
+  const [grade, setGrade] = React.useState('')
   const [q, setQ] = React.useState('')
   const [page, setPage] = React.useState(1)
 
@@ -58,6 +70,7 @@ export default function ItemBankPage() {
     return items.filter((it) => {
       if (school && itemSchool(it) !== school) return false
       if (origin && itemOrigin(it) !== origin) return false
+      if (allGrades && grade && itemGradeLevel(it) !== grade) return false
       if (year && it.year !== Number(year)) return false
       if (strand && it.strand !== strand) return false
       if (topic && !(it.topic ?? '').includes(topic)) return false
@@ -72,12 +85,12 @@ export default function ItemBankPage() {
       }
       return true
     })
-  }, [items, school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, q])
+  }, [items, school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, grade, allGrades, q])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  React.useEffect(() => setPage(1), [school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, q])
+  React.useEffect(() => setPage(1), [school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, grade, allGrades, q])
 
   const clearFilters = () => {
     setSchool('')
@@ -90,6 +103,7 @@ export default function ItemBankPage() {
     setStatus('')
     setSource('')
     setOrigin('')
+    setGrade('')
     setQ('')
   }
 
@@ -111,7 +125,20 @@ export default function ItemBankPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-navy-800">คลังข้อสอบ <GradeBadge /></h1>
+          <h1 className="text-xl font-bold text-navy-800">
+            {allGrades ? (
+              <>
+                คลังรวม{' '}
+                <span className="ml-2 inline-flex items-center rounded-full bg-navy-100 text-navy-700 text-xs font-semibold px-2.5 py-0.5 align-middle">
+                  ทุกระดับชั้น · ทุกที่มา
+                </span>
+              </>
+            ) : (
+              <>
+                คลังข้อสอบ <GradeBadge />
+              </>
+            )}
+          </h1>
           <p className="text-sm text-muted-foreground">พบ {filtered.length.toLocaleString()} ข้อ จากทั้งหมด {items.length.toLocaleString()} ข้อ</p>
         </div>
         <Button onClick={() => setEditItem('new')}>
@@ -132,6 +159,16 @@ export default function ItemBankPage() {
             />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10 gap-2">
+            {allGrades && (
+              <NativeSelect value={grade} onChange={(e) => setGrade(e.target.value)}>
+                <option value="">ทุกระดับชั้น</option>
+                {GRADE_LEVELS.map((g) => (
+                  <option key={g} value={g}>
+                    {GRADE_LEVEL_LABEL[g]}
+                  </option>
+                ))}
+              </NativeSelect>
+            )}
             <NativeSelect value={school} onChange={(e) => setSchool(e.target.value)}>
               <option value="">ทุกโรงเรียน / เป้าหมาย</option>
               {schools.map((s) => (
@@ -206,7 +243,7 @@ export default function ItemBankPage() {
               ))}
             </NativeSelect>
           </div>
-          {(school || year || strand || topic || bloom || difficulty || trapType || status || source || origin || q) && (
+          {(school || year || strand || topic || bloom || difficulty || trapType || status || source || origin || grade || q) && (
             <button
               onClick={clearFilters}
               className="text-xs text-navy-600 flex items-center gap-1 hover:underline"
@@ -225,7 +262,8 @@ export default function ItemBankPage() {
               <thead className="bg-navy-50 text-navy-800">
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold">item_id</th>
-                  <th className="px-3 py-2 text-left font-semibold">โรงเรียน</th>
+                  {allGrades && <th className="px-3 py-2 text-left font-semibold">ชั้น</th>}
+                  <th className="px-3 py-2 text-left font-semibold">ที่มา</th>
                   <th className="px-3 py-2 text-left font-semibold">ปี</th>
                   <th className="px-3 py-2 text-left font-semibold">สาระ</th>
                   <th className="px-3 py-2 text-left font-semibold min-w-[240px]">โจทย์</th>
@@ -240,7 +278,7 @@ export default function ItemBankPage() {
                   Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} cols={9} />)}
                 {!loading && pageItems.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-muted-foreground text-sm">
+                    <td colSpan={allGrades ? 10 : 9} className="text-center py-12 text-muted-foreground text-sm">
                       ไม่พบข้อสอบตามเงื่อนไขที่เลือก
                     </td>
                   </tr>
@@ -253,7 +291,8 @@ export default function ItemBankPage() {
                       onClick={() => setDetailItem(it)}
                     >
                       <td className="px-3 py-2 font-mono text-xs text-navy-600">{it.item_id}</td>
-                      <td className="px-3 py-2 text-xs">{schoolMap.get(it.school ?? '')?.name_th ?? '-'}</td>
+                      {allGrades && <td className="px-3 py-2 text-xs whitespace-nowrap">{itemGradeLevel(it)}</td>}
+                      <td className="px-3 py-2 text-xs">{originLabel(it, schoolMap)}</td>
                       <td className="px-3 py-2 text-xs">{it.year}</td>
                       <td className="px-3 py-2 text-xs">
                         <Badge variant="muted">{it.strand}</Badge>

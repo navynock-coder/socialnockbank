@@ -35,6 +35,7 @@ export default function App() {
             >
               <Route path="/" element={<DashboardPage />} />
               <Route path="/items" element={<ItemBankPage />} />
+              <Route path="/bank" element={<ItemBankPage allGrades />} />
               <Route path="/import" element={<ImportPage />} />
               <Route path="/generator" element={<PaperGeneratorPage />} />
               <Route path="/print" element={<PrintViewPage />} />
