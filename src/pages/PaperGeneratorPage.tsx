@@ -177,7 +177,7 @@ export default function PaperGeneratorPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-navy-800">ออกชุดข้อสอบ <GradeBadge /></h1>
+        <h1 className="text-xl font-bold text-navy-800">จัดชุดด่วนตามโรงเรียน <GradeBadge /></h1>
         <p className="text-sm text-muted-foreground">ตั้งค่าเงื่อนไขแล้วให้ระบบสุ่มข้อสอบตามสัดส่วนที่กำหนด</p>
       </div>
 

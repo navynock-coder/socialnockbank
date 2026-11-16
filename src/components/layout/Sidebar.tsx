@@ -11,6 +11,7 @@ import {
   Menu,
   FileStack,
   Timer,
+  Landmark,
 } from 'lucide-react'
 import * as React from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -18,15 +19,35 @@ import { useGradeLevel } from '@/contexts/GradeLevelContext'
 import { GRADE_LEVELS, GRADE_LEVEL_LABEL, type GradeLevel } from '@/lib/vocab'
 import { cn } from '@/lib/utils'
 
-const menuItems = [
-  { to: '/', label: 'แดชบอร์ด', icon: LayoutDashboard, end: true },
-  { to: '/items', label: 'คลังข้อสอบ', icon: Database },
-  { to: '/import', label: 'นำเข้าข้อมูล', icon: UploadCloud },
-  { to: '/generator', label: 'ออกชุดข้อสอบ', icon: FileText },
-  { to: '/print', label: 'พิมพ์ชุดข้อสอบ', icon: Printer },
-  { to: '/export', label: 'ข้อสอบต้นฉบับ', icon: FileStack },
-  { to: '/dna', label: 'School DNA Card', icon: Dna },
-  { to: '/gate-results', label: 'ผลสอบประตูจับเวลา', icon: Timer },
+// เมนูจัดเป็น 5 หมวดตามลำดับงาน: ดูภาพรวม → เก็บข้อสอบ → จัดชุด → พิมพ์/ส่งออก → ขายและผลสอบ
+const menuGroups: { title: string | null; items: { to: string; label: string; icon: typeof Database; end?: boolean }[] }[] = [
+  { title: null, items: [{ to: '/', label: 'แดชบอร์ด', icon: LayoutDashboard, end: true }] },
+  {
+    title: 'คลังข้อสอบ',
+    items: [
+      { to: '/items', label: 'ค้นหา / แก้ไขข้อสอบ', icon: Database },
+      { to: '/import', label: 'นำเข้าข้อสอบ', icon: UploadCloud },
+    ],
+  },
+  {
+    title: 'จัดชุดข้อสอบ',
+    items: [
+      { to: '/studio', label: 'ห้องจัดชุด (Studio)', icon: Landmark },
+      { to: '/generator', label: 'จัดชุดด่วนตามโรงเรียน', icon: FileText },
+      { to: '/dna', label: 'DNA ข้อสอบโรงเรียน', icon: Dna },
+    ],
+  },
+  {
+    title: 'พิมพ์และส่งออก',
+    items: [
+      { to: '/print', label: 'พิมพ์ชุดที่จัดไว้', icon: Printer },
+      { to: '/export', label: 'พิมพ์ข้อสอบจริงทั้งฉบับ', icon: FileStack },
+    ],
+  },
+  {
+    title: 'ขายและผลสอบ',
+    items: [{ to: '/gate-results', label: 'ผลสอบประตูจับเวลา', icon: Timer }],
+  },
 ]
 
 export function Sidebar() {
@@ -65,38 +86,29 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <NavLink
-          to="/studio"
-          onClick={() => setOpen(false)}
-          className={({ isActive }) =>
-            cn(
-              'mb-2 flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold border transition-colors',
-              isActive
-                ? 'bg-gold-400 text-navy-900 border-gold-300 shadow'
-                : 'border-gold-400/60 text-gold-300 hover:bg-gold-400/10'
-            )
-          }
-        >
-          <span className="truncate">🏛️ ห้องคลังข้อสอบ SOCIALBANK</span>
-        </NavLink>
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={() => setOpen(false)}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-orange-500 text-white shadow'
-                  : 'text-navy-100 hover:bg-navy-700/60'
-              )
-            }
-          >
-            <item.icon className="h-4.5 w-4.5 shrink-0" size={18} />
-            <span className="truncate">{item.label}</span>
-          </NavLink>
+        {menuGroups.map((group, gi) => (
+          <div key={group.title ?? gi} className={gi > 0 ? 'pt-3' : undefined}>
+            {group.title && (
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-orange-300/80">{group.title}</p>
+            )}
+            {group.items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    isActive ? 'bg-orange-500 text-white shadow' : 'text-navy-100 hover:bg-navy-700/60'
+                  )
+                }
+              >
+                <item.icon className="h-4.5 w-4.5 shrink-0" size={18} />
+                <span className="truncate">{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
         ))}
       </nav>
 

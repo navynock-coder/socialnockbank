@@ -68,7 +68,7 @@ export default function ExportExamPage() {
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-navy-800 flex items-center gap-2">
-            <FileStack className="h-5 w-5" /> ข้อสอบต้นฉบับ ตามโรงเรียน/ปี <GradeBadge />
+            <FileStack className="h-5 w-5" /> พิมพ์ข้อสอบจริงทั้งฉบับ (ตามโรงเรียน/ปี) <GradeBadge />
           </h1>
           <p className="text-sm text-muted-foreground">
             รวบรวมข้อสอบทุกข้อในคลังของโรงเรียนและปีที่เลือก มาจัดเป็นชุดข้อสอบพร้อมพิมพ์ (เหมือนชุดข้อสอบจริงของปีนั้น)
