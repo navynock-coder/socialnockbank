@@ -1,9 +1,10 @@
 // สะพานเชื่อม SocialBank → SOCIALNOCK LAB
-// แปลงชุดข้อสอบเป็นรูปแบบชีต "SOCIALNOCK เฉลยจากฟอร์ม":
-//   - ตัวเลือก = JSON Array ของข้อความตัวเลือก (เรียงตามลำดับที่แสดง)
-//   - เฉลย    = ข้อความเต็มของตัวเลือกที่ถูก (ไม่ใช่แค่ ก/ข/ค/ง)
-//   - คำอธิบายเฉลย ดึงจากคลัง
-import { ANSWER_TH_LABEL } from '@/lib/vocab'
+// แปลงชุดข้อสอบเป็นคอลัมน์เดียวกับชีต "SOCIALNOCK เฉลยจากฟอร์ม" ที่ Lab ใช้จริง:
+//   ชีตคำตอบ | ฟอร์ม | ชื่อฟอร์ม | ลำดับข้อ | โจทย์ | ตัวเลือก | เฉลย | คะแนน | ชนิด | อธิบายเมื่อตอบถูก | อธิบายเมื่อตอบผิด | ฟอร์มแก้ไขล่าสุด
+//   - โจทย์   = "1. ..." (ตัดเลขข้อเดิมในคลังออกแล้วรันเลขใหม่ตามลำดับชุด)
+//   - ตัวเลือก = JSON Array ของข้อความตัวเลือก (เรียงตามลำดับที่แสดงหลังสลับ)
+//   - เฉลย    = JSON Array ของข้อความเต็มของตัวเลือกที่ถูก เช่น ["ปัญจวัคคีย์"]
+// คอลัมน์ต่อท้าย (รหัสข้อสอบ, สาระ, ...) เป็นข้อมูลเสริมจากคลัง Lab ไม่ต้องใช้ก็ได้
 import { cleanStem } from '@/lib/labItem'
 import { getChoiceText, type GeneratedItem } from '@/lib/paperGenerator'
 
@@ -22,13 +23,19 @@ export interface LabSetMeta {
 }
 
 export interface LabRow {
-  ข้อ: number
-  รหัสข้อสอบ: string
-  คำถาม: string
+  ชีตคำตอบ: string
+  ฟอร์ม: string
+  ชื่อฟอร์ม: string
+  ลำดับข้อ: number
+  โจทย์: string
   ตัวเลือก: string // JSON Array string
-  เฉลย: string
-  เฉลยตัวอักษร: string
-  คำอธิบายเฉลย: string
+  เฉลย: string // JSON Array string
+  คะแนน: number
+  ชนิด: 'MULTIPLE_CHOICE'
+  อธิบายเมื่อตอบถูก: string
+  อธิบายเมื่อตอบผิด: string
+  ฟอร์มแก้ไขล่าสุด: string
+  รหัสข้อสอบ: string
   สาระ: string
   หัวข้อ: string
   ความยาก: number | null
@@ -41,22 +48,34 @@ export interface LabPayload {
   action: 'upsert_set'
   source: 'socialbank'
   exported_at: string
-  set: LabSetMeta & { total_items: number }
+  set: LabSetMeta & { total_items: number; sheet_name: string }
   rows: LabRow[]
 }
 
-export function toLabRows(items: GeneratedItem[]): LabRow[] {
+export function labSheetName(meta: LabSetMeta): string {
+  return [meta.course_code, meta.set_code].filter(Boolean).join('-') || meta.title
+}
+
+export function toLabRows(items: GeneratedItem[], meta: LabSetMeta, exportedAt = new Date().toISOString()): LabRow[] {
+  const sheet = labSheetName(meta)
   return items.map((gi, idx) => {
     const texts = gi.shuffle.order.map((k) => getChoiceText(gi.item, k) ?? '')
     const answerIdx = ['A', 'B', 'C', 'D', 'E'].indexOf(gi.shuffle.newAnswer)
+    const explanation = gi.item.explanation ?? ''
     return {
-      ข้อ: idx + 1,
-      รหัสข้อสอบ: gi.item.item_id,
-      คำถาม: cleanStem(gi.item.stem),
+      ชีตคำตอบ: sheet,
+      ฟอร์ม: meta.paper_id ? `socialbank:${meta.paper_id}` : 'socialbank',
+      ชื่อฟอร์ม: meta.title,
+      ลำดับข้อ: idx + 1,
+      โจทย์: `${idx + 1}. ${cleanStem(gi.item.stem)}`,
       ตัวเลือก: JSON.stringify(texts),
-      เฉลย: texts[answerIdx] ?? '',
-      เฉลยตัวอักษร: ANSWER_TH_LABEL[gi.shuffle.newAnswer] ?? gi.shuffle.newAnswer,
-      คำอธิบายเฉลย: gi.item.explanation ?? '',
+      เฉลย: JSON.stringify(texts[answerIdx] != null ? [texts[answerIdx]] : []),
+      คะแนน: 1,
+      ชนิด: 'MULTIPLE_CHOICE',
+      อธิบายเมื่อตอบถูก: explanation,
+      อธิบายเมื่อตอบผิด: explanation,
+      ฟอร์มแก้ไขล่าสุด: exportedAt,
+      รหัสข้อสอบ: gi.item.item_id,
       สาระ: gi.item.strand,
       หัวข้อ: gi.item.topic ?? '',
       ความยาก: gi.item.difficulty,
@@ -67,13 +86,14 @@ export function toLabRows(items: GeneratedItem[]): LabRow[] {
 }
 
 export function buildLabPayload(meta: LabSetMeta, items: GeneratedItem[]): LabPayload {
+  const exported_at = new Date().toISOString()
   return {
     schema: LAB_SCHEMA,
     action: 'upsert_set',
     source: 'socialbank',
-    exported_at: new Date().toISOString(),
-    set: { ...meta, total_items: items.length },
-    rows: toLabRows(items),
+    exported_at,
+    set: { ...meta, total_items: items.length, sheet_name: labSheetName(meta) },
+    rows: toLabRows(items, meta, exported_at),
   }
 }
 

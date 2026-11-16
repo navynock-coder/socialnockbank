@@ -50,25 +50,31 @@ Supabase → SQL Editor → New query → วางไฟล์ `supabase/migrat
   "action": "upsert_set",
   "source": "socialbank",
   "exported_at": "2026-11-16T13:00:00.000Z",
-  "set": { "paper_id": "uuid|null", "title": "P3C10 EP1", "course_code": "P3C10", "set_code": "EP1", "duration_minutes": 60, "total_items": 50 },
+  "set": { "paper_id": "uuid|null", "title": "P3C10 EP1", "course_code": "P3C10", "set_code": "EP1", "sheet_name": "P3C10-EP1", "duration_minutes": 60, "total_items": 50 },
   "rows": [
     {
-      "ข้อ": 1,
-      "รหัสข้อสอบ": "P1C4-06-021",
-      "คำถาม": "พระอัสสชิ มีความสำคัญ…",
+      "ชีตคำตอบ": "P3C10-EP1",
+      "ฟอร์ม": "socialbank:<paper_id>",
+      "ชื่อฟอร์ม": "P3C10 EP1",
+      "ลำดับข้อ": 1,
+      "โจทย์": "1. พระอัสสชิ มีความสำคัญ…",
       "ตัวเลือก": "[\"ปัญจวัคคีย์\",\"พระอัครสาวก\",\"พระอสีติมหาสาวก\",\"ชฎิล 3 พี่น้อง\"]",
-      "เฉลย": "ปัญจวัคคีย์",
-      "เฉลยตัวอักษร": "ก",
-      "คำอธิบายเฉลย": "…",
-      "สาระ": "ศาสนา", "หัวข้อ": "", "ความยาก": 3, "Bloom": "จำ", "รูปภาพ": ""
+      "เฉลย": "[\"ปัญจวัคคีย์\"]",
+      "คะแนน": 1,
+      "ชนิด": "MULTIPLE_CHOICE",
+      "อธิบายเมื่อตอบถูก": "…",
+      "อธิบายเมื่อตอบผิด": "…",
+      "ฟอร์มแก้ไขล่าสุด": "2026-11-16T13:00:00.000Z",
+      "รหัสข้อสอบ": "P1C4-06-021", "สาระ": "ศาสนา", "หัวข้อ": "", "ความยาก": 3, "Bloom": "จำ", "รูปภาพ": ""
     }
   ]
 }
 ```
 
-- `ตัวเลือก` เป็น JSON Array (string) ตามลำดับที่แสดงจริง (ถ้าเลือกสลับตัวเลือก ลำดับนี้คือหลังสลับแล้ว)
-- `เฉลย` เป็นข้อความเต็มของตัวเลือกที่ถูก ตรงกับรูปแบบชีต "SOCIALNOCK เฉลยจากฟอร์ม"
-- `คำถาม` ตัดเลขข้อเดิมออกแล้ว (`cleanStem`) ให้ Lab รันเลขข้อเอง
+- 12 คอลัมน์แรกตรงกับชีต "SOCIALNOCK เฉลยจากฟอร์ม" ทุกตัว (ชื่อและลำดับเดียวกัน) Lab อ่านได้เหมือนชุดที่มาจาก Google Form
+- `ตัวเลือก` และ `เฉลย` เป็น JSON Array (string) ตามลำดับที่แสดงจริง (ถ้าเลือกสลับตัวเลือก ลำดับนี้คือหลังสลับแล้ว)
+- `โจทย์` ตัดเลขข้อเดิมในคลังออก (`cleanStem`) แล้วใส่ "1. 2. 3." ตามลำดับในชุด
+- 6 คอลัมน์ท้าย (รหัสข้อสอบ … รูปภาพ) เป็นข้อมูลเสริมจากคลัง ไม่ใช้ก็ได้
 
 ตัวอย่าง Google Apps Script (ฝั่ง Lab) — Deploy เป็น Web app, Execute as: Me, Who has access: Anyone:
 
@@ -77,7 +83,7 @@ function doPost(e) {
   const p = JSON.parse(e.postData.contents)
   if (p.schema !== 'socialnock-lab/answer-key@1') return ContentService.createTextOutput('bad schema')
   const ss = SpreadsheetApp.getActive()
-  const name = `${p.set.course_code || 'SET'}-${p.set.set_code || ''}`.replace(/-$/, '')
+  const name = p.set.sheet_name || p.set.title
   const sh = ss.getSheetByName(name) || ss.insertSheet(name)
   const headers = Object.keys(p.rows[0] || {})
   sh.clearContents()
