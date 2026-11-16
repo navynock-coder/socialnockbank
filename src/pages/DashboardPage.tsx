@@ -1,3 +1,4 @@
+import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Printer } from 'lucide-react'
@@ -101,7 +102,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between no-print">
         <div>
-          <h1 className="text-xl font-bold text-navy-800">แดชบอร์ด</h1>
+          <h1 className="text-xl font-bold text-navy-800">แดชบอร์ด <GradeBadge /></h1>
           <p className="text-sm text-muted-foreground">ภาพรวมคลังข้อสอบสังคมศึกษา</p>
         </div>
       </div>
