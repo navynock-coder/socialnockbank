@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase'
 import { EXAM_MEDIA_BUCKET } from '@/lib/supabase'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { ANSWERS, BLOOMS, PACKS, STATUSES, STRANDS, TRAP_TYPES, YEARS } from '@/lib/vocab'
+import { useGradeLevel } from '@/contexts/GradeLevelContext'
+import { ANSWERS, BLOOMS, GRADE_LEVELS, GRADE_LEVEL_LABEL, SOURCE_SUGGESTIONS, PACKS, STATUSES, STRANDS, TRAP_TYPES, YEARS, itemGradeLevel } from '@/lib/vocab'
 import type { ItemRow, SchoolRow } from '@/types/database'
 
 interface ItemFormProps {
@@ -40,11 +41,14 @@ const emptyForm = {
   media_url: '',
   stimulus_id: '',
   status: 'ใช้งาน',
+  grade_level: 'ป.6' as string,
+  source: '',
 }
 
 export function ItemForm({ schools, initial, onSaved, onCancel }: ItemFormProps) {
   const { user } = useAuth()
   const { toast } = useToast()
+  const { gradeLevel } = useGradeLevel()
   const [form, setForm] = React.useState(() =>
     initial
       ? {
@@ -70,8 +74,10 @@ export function ItemForm({ schools, initial, onSaved, onCancel }: ItemFormProps)
           media_url: initial.media_url ?? '',
           stimulus_id: initial.stimulus_id ?? '',
           status: initial.status,
+          grade_level: itemGradeLevel(initial) as string,
+          source: initial.source ?? '',
         }
-      : emptyForm
+      : { ...emptyForm, grade_level: gradeLevel as string }
   )
   const [saving, setSaving] = React.useState(false)
   const [uploading, setUploading] = React.useState(false)
@@ -134,8 +140,12 @@ export function ItemForm({ schools, initial, onSaved, onCancel }: ItemFormProps)
     }
     setError(null)
     setSaving(true)
+    const { grade_level, source, ...rest } = form
+    // ป.6 ไม่ต้องส่งค่า (ใช้ค่า default ของ DB) — ฟอร์มยังใช้งานได้แม้ยังไม่ได้รัน migration
     const payload = {
-      ...form,
+      ...rest,
+      ...(grade_level !== 'ป.6' || initial?.grade_level ? { grade_level } : {}),
+      ...(source.trim() || initial?.source ? { source: source.trim() || null } : {}),
       school: form.school || null,
       pack: form.pack || null,
       exam_date: form.exam_date || null,
@@ -177,10 +187,34 @@ export function ItemForm({ schools, initial, onSaved, onCancel }: ItemFormProps)
 
   return (
     <form onSubmit={onSubmit} onPaste={onPaste} className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <div>
           <Label>รหัสข้อสอบ (item_id) *</Label>
           <Input value={form.item_id} onChange={(e) => set('item_id', e.target.value)} required />
+        </div>
+        <div>
+          <Label>ระดับชั้น *</Label>
+          <NativeSelect value={form.grade_level} onChange={(e) => set('grade_level', e.target.value)}>
+            {GRADE_LEVELS.map((g) => (
+              <option key={g} value={g}>
+                {GRADE_LEVEL_LABEL[g]}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+        <div>
+          <Label>แหล่งที่มา/คอร์ส</Label>
+          <Input
+            list="item-source-suggestions"
+            placeholder="ว่าง = ข้อสอบจริง"
+            value={form.source}
+            onChange={(e) => set('source', e.target.value)}
+          />
+          <datalist id="item-source-suggestions">
+            {SOURCE_SUGGESTIONS.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
         </div>
         <div>
           <Label>โรงเรียน</Label>

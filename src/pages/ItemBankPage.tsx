@@ -1,3 +1,4 @@
+import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react'
@@ -33,6 +34,7 @@ export default function ItemBankPage() {
   const [difficulty, setDifficulty] = React.useState('')
   const [trapType, setTrapType] = React.useState('')
   const [status, setStatus] = React.useState('')
+  const [source, setSource] = React.useState('')
   const [q, setQ] = React.useState('')
   const [page, setPage] = React.useState(1)
 
@@ -60,18 +62,20 @@ export default function ItemBankPage() {
       if (difficulty && it.difficulty !== Number(difficulty)) return false
       if (trapType && it.trap_type !== trapType) return false
       if (status && it.status !== status) return false
+      if (source === '__real__' && it.source) return false
+      if (source && source !== '__real__' && it.source !== source) return false
       if (query) {
         const hay = `${it.stem} ${it.explanation ?? ''} ${it.item_id}`.toLowerCase()
         if (!hay.includes(query)) return false
       }
       return true
     })
-  }, [items, school, year, strand, topic, bloom, difficulty, trapType, status, q])
+  }, [items, school, year, strand, topic, bloom, difficulty, trapType, status, source, q])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  React.useEffect(() => setPage(1), [school, year, strand, topic, bloom, difficulty, trapType, status, q])
+  React.useEffect(() => setPage(1), [school, year, strand, topic, bloom, difficulty, trapType, status, source, q])
 
   const clearFilters = () => {
     setSchool('')
@@ -82,6 +86,7 @@ export default function ItemBankPage() {
     setDifficulty('')
     setTrapType('')
     setStatus('')
+    setSource('')
     setQ('')
   }
 
@@ -97,12 +102,13 @@ export default function ItemBankPage() {
   }
 
   const years = Array.from(new Set(items.map((i) => i.year))).sort((a, b) => b - a)
+  const sources = Array.from(new Set(items.map((i) => i.source).filter((s): s is string => !!s))).sort()
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-navy-800">คลังข้อสอบ</h1>
+          <h1 className="text-xl font-bold text-navy-800">คลังข้อสอบ <GradeBadge /></h1>
           <p className="text-sm text-muted-foreground">พบ {filtered.length.toLocaleString()} ข้อ จากทั้งหมด {items.length.toLocaleString()} ข้อ</p>
         </div>
         <Button onClick={() => setEditItem('new')}>
@@ -172,6 +178,15 @@ export default function ItemBankPage() {
                 </option>
               ))}
             </NativeSelect>
+            <NativeSelect value={source} onChange={(e) => setSource(e.target.value)}>
+              <option value="">ทุกแหล่งที่มา</option>
+              <option value="__real__">ข้อสอบจริง (ไม่ระบุคอร์ส)</option>
+              {sources.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </NativeSelect>
             <NativeSelect value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="">ทุกสถานะ</option>
               {STATUSES.map((s) => (
@@ -181,7 +196,7 @@ export default function ItemBankPage() {
               ))}
             </NativeSelect>
           </div>
-          {(school || year || strand || topic || bloom || difficulty || trapType || status || q) && (
+          {(school || year || strand || topic || bloom || difficulty || trapType || status || source || q) && (
             <button
               onClick={clearFilters}
               className="text-xs text-navy-600 flex items-center gap-1 hover:underline"

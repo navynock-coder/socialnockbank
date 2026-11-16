@@ -1,3 +1,4 @@
+import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { Printer } from 'lucide-react'
@@ -70,7 +71,7 @@ export default function SchoolDnaPage() {
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-navy-800">School DNA Card</h1>
+          <h1 className="text-xl font-bold text-navy-800">School DNA Card <GradeBadge /></h1>
           <p className="text-sm text-muted-foreground">วิเคราะห์ลักษณะเฉพาะของข้อสอบแต่ละสนามสอบ</p>
         </div>
         <div className="flex gap-2">

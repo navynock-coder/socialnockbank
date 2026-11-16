@@ -1,3 +1,4 @@
+import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
@@ -11,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { LoadingBlock } from '@/components/ui/spinner'
 import { useToast } from '@/components/ui/toast'
 import { useAllItems } from '@/hooks/useItems'
+import { useGradeLevel } from '@/contexts/GradeLevelContext'
 import { useSchools } from '@/hooks/useSchools'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -27,6 +29,7 @@ const COUNT_SHORTCUTS = [25, 30, 32, 40, 50]
 
 export default function PaperGeneratorPage() {
   const { items, loading } = useAllItems()
+  const { gradeLevel } = useGradeLevel()
   const { schools } = useSchools()
   const { user } = useAuth()
   const { toast } = useToast()
@@ -45,7 +48,15 @@ export default function PaperGeneratorPage() {
   const [avoidPaperId, setAvoidPaperId] = React.useState('')
   const [avoidLastN, setAvoidLastN] = React.useState(3)
   const [shuffleChoices, setShuffleChoices] = React.useState(false)
-  const [savedPapers, setSavedPapers] = React.useState<PaperRow[]>([])
+  const [allSavedPapers, setSavedPapers] = React.useState<PaperRow[]>([])
+  // ชุดข้อสอบที่บันทึกไว้ของระดับชั้นนี้เท่านั้น (ชุดเก่าที่ไม่มี gradeLevel ถือเป็น ป.6)
+  const savedPapers = React.useMemo(
+    () =>
+      allSavedPapers.filter(
+        (p) => ((p.config as { gradeLevel?: string } | null)?.gradeLevel ?? 'ป.6') === gradeLevel
+      ),
+    [allSavedPapers, gradeLevel]
+  )
   const [result, setResult] = React.useState<GenerateResult | null>(null)
   const [paperName, setPaperName] = React.useState('')
   const [saving, setSaving] = React.useState(false)
@@ -141,7 +152,7 @@ export default function PaperGeneratorPage() {
     const { error } = await supabase.from('papers').insert({
       paper_name: paperName,
       mode: config.mode,
-      config: { ...config, shuffleMap } as unknown as Record<string, unknown>,
+      config: { ...config, shuffleMap, gradeLevel } as unknown as Record<string, unknown>,
       item_ids: result.items.map((gi) => gi.item.item_id),
       total_items: result.items.length,
       user_id: user?.id,
@@ -166,7 +177,7 @@ export default function PaperGeneratorPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-navy-800">ออกชุดข้อสอบ</h1>
+        <h1 className="text-xl font-bold text-navy-800">ออกชุดข้อสอบ <GradeBadge /></h1>
         <p className="text-sm text-muted-foreground">ตั้งค่าเงื่อนไขแล้วให้ระบบสุ่มข้อสอบตามสัดส่วนที่กำหนด</p>
       </div>
 

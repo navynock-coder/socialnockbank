@@ -1,4 +1,4 @@
-import { ANSWERS, IMPORT_TEMPLATE_COLUMNS, PACKS, STATUSES, STRANDS, BLOOMS, TRAP_TYPES } from '@/lib/vocab'
+import { ANSWERS, IMPORT_TEMPLATE_COLUMNS, PACKS, STATUSES, STRANDS, BLOOMS, TRAP_TYPES, GRADE_LEVELS } from '@/lib/vocab'
 import type { ItemRow } from '@/types/database'
 
 export type RowSeverity = 'green' | 'yellow' | 'orange' | 'red'
@@ -92,6 +92,10 @@ export function validateRows(rows: Record<string, string>[], existingIds: Set<st
       issues.push(`pack "${data.pack}" ไม่อยู่ใน Controlled Vocabulary`)
       bump('orange')
     }
+    if (data.grade_level && !GRADE_LEVELS.includes(data.grade_level as (typeof GRADE_LEVELS)[number])) {
+      issues.push(`grade_level "${data.grade_level}" ต้องเป็น ${GRADE_LEVELS.join(', ')}`)
+      bump('orange')
+    }
     if (data.difficulty && (Number(data.difficulty) < 1 || Number(data.difficulty) > 5 || Number.isNaN(Number(data.difficulty)))) {
       issues.push('difficulty ต้องเป็นตัวเลข 1-5')
       bump('orange')
@@ -119,8 +123,20 @@ export function buildTemplateTSV(): string {
   return `${IMPORT_TEMPLATE_COLUMNS.join('\t')}\n`
 }
 
-export function toItemInsertPayload(data: Record<string, string>, userId: string | undefined) {
+// defaultGrade = ระดับชั้นที่เลือกอยู่ในเมนูซ้าย ใช้เมื่อไฟล์ไม่มีคอลัมน์ grade_level หรือเว้นว่าง
+// ถ้าเป็น ป.6 จะไม่ส่งค่าไป ให้ DB ใช้ค่า default 'ป.6' เอง (นำเข้าได้แม้ยังไม่ได้รัน migration)
+// defaultSource = แหล่งที่มาที่กรอกในหน้านำเข้า ใช้กับแถวที่คอลัมน์ source ว่าง
+export function toItemInsertPayload(
+  data: Record<string, string>,
+  userId: string | undefined,
+  defaultGrade: string = 'ป.6',
+  defaultSource: string = ''
+) {
+  const grade = data.grade_level || defaultGrade
+  const source = (data.source || defaultSource).trim()
   return {
+    ...(source ? { source } : {}),
+    ...(grade !== 'ป.6' ? { grade_level: grade } : {}),
     item_id: data.item_id,
     school: data.school || null,
     year: Number(data.year) || new Date().getFullYear() - 543,
