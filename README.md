@@ -13,6 +13,9 @@
 - **School DNA Card**: วิเคราะห์ลักษณะเฉพาะแต่ละสนามสอบ
 - **Authentication**: Supabase Auth (email/password) + Row Level Security ต่อผู้ใช้
 - **Storage**: อัปโหลด/วางรูปภาพประกอบข้อสอบเข้า bucket `exam-media`
+- **🏛️ ห้องคลังข้อสอบ SOCIALBANK** (`/studio`): Blueprints, Difficulty Meter, บอร์ด EP + กันข้อซ้ำ, ต่อยอดข้อสอบ, ตั้งขาย/ออกรหัสเข้าสอบ, ส่งออก Word/PDF/SOCIALNOCK LAB
+- **ประตูจับเวลา** (`/gate`, สาธารณะ) + ผลสอบแยกกลุ่ม (`/gate-results`) — ต้องรัน `supabase/migrations/20261116_exam_studio_time_gate.sql` ก่อน
+  ดูรายละเอียดการเชื่อมกับ Lab ที่ `docs/SOCIALNOCK_LAB_BRIDGE.md`
 
 ## ขั้นตอนติดตั้ง
 

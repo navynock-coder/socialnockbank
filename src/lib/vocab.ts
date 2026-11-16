@@ -36,6 +36,8 @@ export const PACKS = [
   'PP65-66',
   'PP66-67',
   'PP67-68',
+  'PP68-69',
+  'PP69-70',
 ] as const
 export type Pack = (typeof PACKS)[number]
 
@@ -114,3 +116,50 @@ export const IMPORT_TEMPLATE_COLUMNS = [
   'grade_level',
   'source',
 ] as const
+
+// ============================================================================
+// SOCIALNOCK LAB — รหัสคอร์ส / ชุดสอบ / การขาย
+// ============================================================================
+
+// รหัสคอร์สที่ใช้ใน Lab (ส่วนหน้าของ item_id เช่น P3C8-23-009 → P3C8)
+export const LAB_COURSE_CODES = [
+  'P1C1', 'P1C2', 'P1C3', 'P1C4',
+  'P2C5', 'P2C6', 'P2C7',
+  'P3C8', 'P3C9', 'P3C10',
+  'KTP', 'TUC',
+] as const
+export type LabCourseCode = (typeof LAB_COURSE_CODES)[number]
+
+// คอร์สก่อนหน้าที่ใช้ตรวจ "ข้อซ้ำ" (Anti-Duplicate Guard) เป็นค่าเริ่มต้น
+export const ANTI_DUPLICATE_COURSES = ['P2C7', 'P3C8', 'P3C9'] as const
+
+// 3 ฐานข้อมูลหลักของคลัง
+export const BANK_BASES = ['เตรียมอุดมฯ', 'คอร์สติวครูน็อค', 'โรงเรียนอื่น'] as const
+export type BankBase = (typeof BANK_BASES)[number]
+
+// ระดับความยาก 3 แถบสำหรับ Difficulty Meter (difficulty 1–5 ดาว)
+export const DIFFICULTY_BANDS = ['ง่าย', 'กลาง', 'ยาก'] as const
+export type DifficultyBand = (typeof DIFFICULTY_BANDS)[number]
+export function difficultyBand(d: number | null | undefined): DifficultyBand {
+  const v = d ?? 3
+  return v <= 2 ? 'ง่าย' : v >= 4 ? 'ยาก' : 'กลาง'
+}
+export const DIFFICULTY_BAND_COLORS: Record<DifficultyBand, string> = {
+  ง่าย: '#16a34a',
+  กลาง: '#eab308',
+  ยาก: '#dc2626',
+}
+
+// การเปิดขายชุดข้อสอบ
+export const PAPER_VISIBILITIES = ['course', 'single_sale', 'bundle_pack'] as const
+export const PAPER_VISIBILITY_LABEL: Record<(typeof PAPER_VISIBILITIES)[number], string> = {
+  course: 'ใช้ในคอร์สหลัก',
+  single_sale: 'ขายรายชุด',
+  bundle_pack: 'มัดรวมเป็นแพ็ก',
+}
+
+export const ACCESS_CODE_STATUS_LABEL: Record<'unused' | 'active' | 'expired', string> = {
+  unused: 'ยังไม่ใช้',
+  active: 'เปิดใช้แล้ว',
+  expired: 'หมดอายุ',
+}
