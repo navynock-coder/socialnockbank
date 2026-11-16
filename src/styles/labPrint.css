@@ -1,0 +1,79 @@
+/* แม่แบบเอกสารแบบเดียวกับ SOCIALNOCK LAB (ข้อสอบ/เฉลยที่ Lab ส่งออก) — ใช้ในหน้า "พิมพ์ชุดข้อสอบ" */
+@import url('https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+.lab-doc {
+  position: relative;
+  max-width: 794px;
+  margin: 0 auto;
+  background: #fff;
+  color: #172033;
+  font-family: 'Sarabun', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 44px 50px 40px;
+  border: 1px solid #e3e7ee;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.lab-wm {
+  position: absolute;
+  left: 50%;
+  top: 420px;
+  width: 430px;
+  height: 430px;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  opacity: 0.07;
+  pointer-events: none;
+}
+.lab-doc > *:not(.lab-wm) { position: relative; z-index: 1; }
+
+.lab-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 2px solid #172033; padding-bottom: 10px; margin-bottom: 16px; }
+.lab-head .lab-logo { width: 58px; height: 58px; object-fit: contain; flex: none; align-self: center; }
+.lab-head .ex { font-family: 'Bai Jamjuree', 'Sarabun', sans-serif; font-size: 20px; font-weight: 700; line-height: 1.25; }
+.lab-head .sub { font-size: 12.5px; color: #4b5568; }
+.lab-head .tag { font-family: 'Bai Jamjuree', sans-serif; font-size: 11px; font-weight: 600; color: #2f45a0; border: 1.5px solid #2f45a0; border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+.lab-head .tag.key { color: #155f35; border-color: #155f35; }
+
+.lab-id { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; font-size: 13.5px; margin-bottom: 10px; }
+.lab-score { margin-left: auto; border: 2px solid #172033; border-radius: 10px; padding: 6px 12px; text-align: center; width: 120px; flex: none; }
+.lab-score .l { font-size: 10.5px; color: #7a8497; }
+.lab-score .box { height: 34px; border-bottom: 1.5px dashed #9aa5b5; margin: 2px 8px 4px; }
+.lab-howto { font-size: 12.5px; color: #4b5568; background: #f3f5f8; border-radius: 8px; padding: 7px 12px; margin-bottom: 12px; }
+
+.lab-q { padding: 9px 0 10px; border-bottom: 1px solid #edf0f4; break-inside: avoid; page-break-inside: avoid; }
+.lab-qt { display: flex; gap: 8px; font-size: 14px; line-height: 1.55; }
+.lab-qt b { font-family: 'IBM Plex Mono', monospace; min-width: 22px; }
+.lab-qt span { white-space: pre-wrap; }
+.lab-img { margin: 6px 0 0 30px; max-width: 70%; border: 1px solid #e3e7ee; border-radius: 6px; }
+.lab-ch { display: grid; grid-template-columns: 1fr; gap: 3px 18px; margin: 5px 0 0 30px; font-size: 13.5px; }
+.lab-ch.two { grid-template-columns: 1fr 1fr; }
+.lab-ch div { display: flex; gap: 8px; align-items: baseline; }
+.lab-ch i { font-style: normal; width: 20px; height: 20px; border: 1.4px solid #4b5568; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11.5px; flex: none; line-height: 1; }
+.lab-ch .ok { color: #155f35; font-weight: 700; }
+.lab-ch .ok i { background: #155f35; border-color: #155f35; color: #fff; }
+.lab-why { margin: 6px 0 0 30px; font-size: 12.5px; color: #4b5568; background: #f3f5f8; border-radius: 8px; padding: 6px 10px; white-space: pre-wrap; }
+.lab-why b { color: #a86500; }
+
+.lab-sec { font-family: 'Bai Jamjuree', 'Sarabun', sans-serif; font-size: 15px; font-weight: 700; margin: 16px 0 8px; }
+.lab-blue { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.lab-blue span { border: 1.5px solid; border-radius: 999px; padding: 1px 10px; font-size: 12px; }
+.lab-tbl { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+.lab-tbl th { text-align: left; background: #eef1f5; padding: 5px 7px; font-weight: 600; color: #4b5568; font-size: 11px; }
+.lab-tbl td { padding: 4px 7px; border-bottom: 1px solid #edf0f4; vertical-align: top; }
+.lab-tbl tr { break-inside: avoid; page-break-inside: avoid; }
+.lab-tbl .a { font-weight: 700; color: #155f35; }
+.lab-tbl .s { font-size: 11px; }
+.lab-tbl .w { font-size: 10.5px; color: #4b5568; }
+
+.lab-bubbles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 24px; font-size: 13px; }
+.lab-bubbles div { display: flex; align-items: center; gap: 6px; }
+.lab-bubbles b { font-family: 'IBM Plex Mono', monospace; width: 28px; text-align: right; }
+.lab-bubbles i { font-style: normal; width: 20px; height: 20px; border: 1.4px solid #4b5568; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11px; }
+
+.lab-foot { display: flex; justify-content: space-between; font-size: 11px; color: #7a8497; border-top: 1px solid #e3e7ee; padding-top: 8px; margin-top: 18px; }
+
+@media print {
+  .lab-doc { border: 0; border-radius: 0; padding: 0; max-width: none; overflow: visible; }
+  .lab-wm { position: fixed; top: 50%; }
+}
