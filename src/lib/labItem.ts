@@ -83,6 +83,12 @@ export function schoolsWithItems<S extends { code: string }>(schools: S[], items
   return schools.filter((s) => used.has(s.code))
 }
 
+// ตัวเลือกที่ยังเป็นข้อความแม่แบบจาก "สร้างตัวเลือกหลอก" (เช่น "[ถูกครึ่งเดียว] ... (เติมเงื่อนไขที่ผิด)") = ข้อที่ยังกรอกไม่เสร็จ
+const PLACEHOLDER_RE = /^\s*\[(?:ถูกครึ่งเดียว|คำใกล้เคียง|สลับเหตุ-ผล|ข้อเท็จจริงจริงแต่ไม่ตอบคำถาม|คำตอบที่ถูก)\]|\(เติม[^)]*\)|\(กลับด้านความสัมพันธ์|\(ข้อความถูกต้องแต่ไม่เกี่ยวกับโจทย์\)/
+export function hasPlaceholderChoice(item: Pick<ItemRow, 'choice_a' | 'choice_b' | 'choice_c' | 'choice_d' | 'choice_e'>): boolean {
+  return [item.choice_a, item.choice_b, item.choice_c, item.choice_d, item.choice_e].some((c) => !!c && PLACEHOLDER_RE.test(c))
+}
+
 export function choiceList(item: ItemRow): { key: string; text: string }[] {
   const pairs: [string, string | null][] = [
     ['A', item.choice_a],

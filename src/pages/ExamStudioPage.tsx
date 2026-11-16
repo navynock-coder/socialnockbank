@@ -32,7 +32,7 @@ import {
   type Bloom,
   type Strand,
 } from '@/lib/vocab'
-import { itemBase, itemCourseCode, itemSchool, schoolsWithItems } from '@/lib/labItem'
+import { hasPlaceholderChoice, itemBase, itemCourseCode, itemSchool, schoolsWithItems } from '@/lib/labItem'
 import { PRESET_BLUEPRINTS, autoPickByBlueprint, blueprintFromSchool, buildDuplicateIndex, type Blueprint } from '@/lib/examStudio'
 import type { ItemRow, PaperRow } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -100,6 +100,7 @@ export default function ExamStudioPage() {
     const needle = q.trim().toLowerCase()
     return items.filter((it) => {
       if (it.status !== 'ใช้งาน') return false
+      if (hasPlaceholderChoice(it)) return false // ข้อที่ตัวเลือกยังเป็นแม่แบบ ไม่ให้หลุดเข้าชุด
       if (bases.length && !bases.includes(itemBase(it))) return false
       if (strands.length && !strands.includes(it.strand as Strand)) return false
       if (blooms.length && !blooms.includes(it.bloom as Bloom)) return false

@@ -1,7 +1,7 @@
 import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, X, AlertTriangle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input, NativeSelect } from '@/components/ui/input'
@@ -14,7 +14,7 @@ import { useAllItems } from '@/hooks/useItems'
 import { useSchools } from '@/hooks/useSchools'
 import { supabase } from '@/lib/supabase'
 import { BLOOMS, DIFFICULTIES, GRADE_LEVELS, GRADE_LEVEL_LABEL, itemGradeLevel, ORIGINS, STATUSES, STRANDS, TRAP_TYPES } from '@/lib/vocab'
-import { itemCourseCode, itemOrigin, itemSchool, itemSetCode, schoolsWithItems } from '@/lib/labItem'
+import { hasPlaceholderChoice, itemCourseCode, itemOrigin, itemSchool, itemSetCode, schoolsWithItems } from '@/lib/labItem'
 import { ItemForm } from '@/components/items/ItemForm'
 import { ItemDetailModal } from '@/components/items/ItemDetailModal'
 import type { ItemRow } from '@/types/database'
@@ -49,6 +49,8 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
   const [source, setSource] = React.useState('')
   const [origin, setOrigin] = React.useState(searchParams.get('origin') ?? '')
   const [grade, setGrade] = React.useState('')
+  const [onlyBroken, setOnlyBroken] = React.useState(false)
+  const [confirmHideBroken, setConfirmHideBroken] = React.useState(false)
   const [q, setQ] = React.useState('')
   const [page, setPage] = React.useState(1)
 
@@ -71,6 +73,7 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
       if (school && itemSchool(it) !== school) return false
       if (origin && itemOrigin(it) !== origin) return false
       if (allGrades && grade && itemGradeLevel(it) !== grade) return false
+      if (onlyBroken && !hasPlaceholderChoice(it)) return false
       if (year && it.year !== Number(year)) return false
       if (strand && it.strand !== strand) return false
       if (topic && !(it.topic ?? '').includes(topic)) return false
@@ -85,12 +88,12 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
       }
       return true
     })
-  }, [items, school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, grade, allGrades, q])
+  }, [items, school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, grade, allGrades, onlyBroken, q])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  React.useEffect(() => setPage(1), [school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, grade, allGrades, q])
+  React.useEffect(() => setPage(1), [school, year, strand, topic, bloom, difficulty, trapType, status, source, origin, grade, allGrades, onlyBroken, q])
 
   const clearFilters = () => {
     setSchool('')
@@ -104,6 +107,7 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
     setSource('')
     setOrigin('')
     setGrade('')
+    setOnlyBroken(false)
     setQ('')
   }
 
@@ -116,6 +120,27 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
       toast('ลบข้อสอบสำเร็จ', 'success')
       reload()
     }
+  }
+
+  // พัก/เปิดใช้ข้อเดียว (ไม่ลบข้อมูล ข้อที่พักไว้จะไม่ถูกดึงไปจัดชุด)
+  const handleToggleHidden = async (it: ItemRow) => {
+    const next = it.status === 'ใช้งาน' ? 'พักไว้' : 'ใช้งาน'
+    const { error } = await supabase.from('items').update({ status: next }).eq('id', it.id)
+    if (error) return toast(`บันทึกไม่สำเร็จ: ${error.message}`, 'error')
+    toast(next === 'พักไว้' ? `พักข้อ ${it.item_id} ไว้แล้ว (ไม่ถูกดึงไปจัดชุด)` : `เปิดใช้ข้อ ${it.item_id} แล้ว`, 'success')
+    setDetailItem(null)
+    reload()
+  }
+
+  // ข้อที่ตัวเลือกยังเป็นข้อความแม่แบบ (กรอกไม่เสร็จ)
+  const brokenItems = React.useMemo(() => items.filter(hasPlaceholderChoice), [items])
+  const brokenActive = brokenItems.filter((it) => it.status === 'ใช้งาน')
+  const hideAllBroken = async () => {
+    const ids = brokenActive.map((it) => it.id)
+    const { error } = await supabase.from('items').update({ status: 'พักไว้' }).in('id', ids)
+    if (error) return toast(`บันทึกไม่สำเร็จ: ${error.message}`, 'error')
+    toast(`พักไว้ ${ids.length} ข้อแล้ว — ดูได้จากตัวกรองสถานะ "พักไว้"`, 'success')
+    reload()
   }
 
   const years = Array.from(new Set(items.map((i) => i.year))).sort((a, b) => b - a)
@@ -145,6 +170,24 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
           <Plus className="h-4 w-4" /> เพิ่มข้อสอบใหม่
         </Button>
       </div>
+
+      {brokenItems.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">
+            พบ {brokenItems.length.toLocaleString()} ข้อที่ตัวเลือกยังเป็นข้อความแม่แบบ เช่น "(เติมเงื่อนไขที่ผิด)"
+            {brokenActive.length > 0 ? ` (ยังเปิดใช้งาน ${brokenActive.length.toLocaleString()} ข้อ)` : ' (พักไว้หมดแล้ว)'}
+          </span>
+          <Button size="sm" variant="outline" onClick={() => setOnlyBroken(!onlyBroken)}>
+            {onlyBroken ? 'ดูทั้งหมด' : 'ดูรายการ'}
+          </Button>
+          {brokenActive.length > 0 && (
+            <Button size="sm" variant="destructive" onClick={() => setConfirmHideBroken(true)}>
+              พักไว้ทั้งหมด
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -243,7 +286,7 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
               ))}
             </NativeSelect>
           </div>
-          {(school || year || strand || topic || bloom || difficulty || trapType || status || source || origin || grade || q) && (
+          {(school || year || strand || topic || bloom || difficulty || trapType || status || source || origin || grade || onlyBroken || q) && (
             <button
               onClick={clearFilters}
               className="text-xs text-navy-600 flex items-center gap-1 hover:underline"
@@ -336,7 +379,20 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
         </CardContent>
       </Card>
 
-      <ItemDetailModal item={detailItem} schoolMap={schoolMap} onClose={() => setDetailItem(null)} />
+      <ItemDetailModal
+        item={detailItem}
+        schoolMap={schoolMap}
+        onClose={() => setDetailItem(null)}
+        onEdit={(it) => {
+          setDetailItem(null)
+          setEditItem(it)
+        }}
+        onToggleHidden={handleToggleHidden}
+        onDelete={(it) => {
+          setDetailItem(null)
+          setDeleteItem(it)
+        }}
+      />
 
       <Dialog open={editItem !== null} onOpenChange={(o) => !o && setEditItem(null)}>
         <DialogContent
@@ -365,6 +421,15 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
         description={`ต้องการลบข้อสอบ "${deleteItem?.item_id}" ใช่หรือไม่? การลบไม่สามารถย้อนกลับได้`}
         confirmLabel="ลบข้อสอบ"
         onConfirm={handleDelete}
+      />
+
+      <ConfirmDialog
+        open={confirmHideBroken}
+        onOpenChange={setConfirmHideBroken}
+        title="พักข้อที่ยังกรอกไม่เสร็จทั้งหมด"
+        description={`จะเปลี่ยน ${brokenActive.length} ข้อเป็นสถานะ "พักไว้" ข้อเหล่านี้จะไม่ถูกดึงไปจัดชุด แต่ยังอยู่ในคลัง แก้หรือเปิดใช้ใหม่ได้ภายหลัง`}
+        confirmLabel="พักไว้ทั้งหมด"
+        onConfirm={hideAllBroken}
       />
 
       {loading && items.length === 0 && <LoadingBlock />}

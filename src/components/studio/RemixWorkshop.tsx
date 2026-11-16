@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { ANSWERS, ANSWER_TH_LABEL, BLOOMS, DIFFICULTIES, TRAP_TYPES } from '@/lib/vocab'
-import { cleanStem } from '@/lib/labItem'
+import { cleanStem, hasPlaceholderChoice } from '@/lib/labItem'
 import { REMIX_ACTIONS, buildRemixPrompt, type RemixDraft } from '@/lib/remixTemplates'
 import type { ItemRow } from '@/types/database'
 
@@ -76,6 +76,10 @@ export function RemixWorkshop({
     if (!draft.stem.trim()) return toast('กรุณาใส่โจทย์ใหม่', 'error')
     const choiceOf = (k: string) => draft[`choice_${k.toLowerCase()}` as keyof RemixDraft] as string
     if (!choiceOf(draft.answer)?.trim()) return toast('ตัวเลือกที่เป็นเฉลยต้องไม่ว่าง', 'error')
+    if (hasPlaceholderChoice(draft)) {
+      toast('ยังมีตัวเลือกที่เป็นข้อความแม่แบบ เช่น "(เติมเงื่อนไขที่ผิด)" — แก้ให้เป็นตัวเลือกจริงก่อนบันทึก', 'error')
+      return
+    }
     setSaving(true)
     const newId = nextRemixId(item.item_id, takenIds)
     const payload = {

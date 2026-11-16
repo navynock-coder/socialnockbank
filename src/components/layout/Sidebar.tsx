@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Database,
@@ -22,12 +22,17 @@ import { cn } from '@/lib/utils'
 
 // เมนูจัดเป็น 5 หมวดตามลำดับงาน: ดูภาพรวม → เก็บข้อสอบ → จัดชุด → พิมพ์/ส่งออก → ขายและผลสอบ
 const menuGroups: { title: string | null; items: { to: string; label: string; icon: typeof Database; end?: boolean }[] }[] = [
-  { title: null, items: [{ to: '/', label: 'แดชบอร์ด', icon: LayoutDashboard, end: true }] },
+  {
+    title: null,
+    items: [
+      { to: '/', label: 'แดชบอร์ด', icon: LayoutDashboard, end: true },
+      { to: '/bank', label: 'คลังรวม (ทุกระดับชั้น)', icon: Library },
+    ],
+  },
   {
     title: 'คลังข้อสอบ',
     items: [
       { to: '/items', label: 'คลังระดับชั้นนี้', icon: Database },
-      { to: '/bank', label: 'คลังรวม (ทุกชั้น)', icon: Library },
       { to: '/import', label: 'นำเข้าข้อสอบ', icon: UploadCloud },
     ],
   },
@@ -56,6 +61,9 @@ export function Sidebar() {
   const { user, signOut } = useAuth()
   const { gradeLevel, setGradeLevel } = useGradeLevel()
   const [open, setOpen] = React.useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const onBank = location.pathname === '/bank'
 
   const content = (
     <div className="flex flex-col h-full">
@@ -75,10 +83,16 @@ export function Sidebar() {
         </label>
         <select
           id="grade-level"
-          value={gradeLevel}
-          onChange={(e) => setGradeLevel(e.target.value as GradeLevel)}
+          value={onBank ? '__all__' : gradeLevel}
+          onChange={(e) => {
+            // "ทุกระดับชั้น" = เปิดคลังรวม, เลือกชั้นใดชั้นหนึ่งจากคลังรวม = กลับไปคลังของชั้นนั้น
+            if (e.target.value === '__all__') return navigate('/bank')
+            setGradeLevel(e.target.value as GradeLevel)
+            if (onBank) navigate('/items')
+          }}
           className="w-full rounded-lg bg-navy-700 text-white text-sm px-3 py-2 border border-navy-500 focus:outline-none focus:ring-2 focus:ring-orange-400"
         >
+          <option value="__all__">ทุกระดับชั้น (คลังรวม)</option>
           {GRADE_LEVELS.map((g) => (
             <option key={g} value={g}>
               {GRADE_LEVEL_LABEL[g]}
