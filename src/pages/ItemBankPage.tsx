@@ -1,6 +1,6 @@
 import { GradeBadge } from '@/components/GradeBadge'
 import * as React from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, X, AlertTriangle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { BLOOMS, DIFFICULTIES, GRADE_LEVELS, GRADE_LEVEL_LABEL, itemGradeLevel, ORIGINS, STATUSES, STRANDS, TRAP_TYPES } from '@/lib/vocab'
 import { hasPlaceholderChoice, itemCourseCode, itemOrigin, itemSchool, itemSetCode, schoolsWithItems } from '@/lib/labItem'
 import { ItemForm } from '@/components/items/ItemForm'
+import { itemsToResult, quickPaperFromPool } from '@/lib/paperGenerator'
 import { ItemDetailModal } from '@/components/items/ItemDetailModal'
 import type { ItemRow } from '@/types/database'
 
@@ -50,6 +51,18 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
   const [origin, setOrigin] = React.useState(searchParams.get('origin') ?? '')
   const [grade, setGrade] = React.useState('')
   const [onlyBroken, setOnlyBroken] = React.useState(false)
+  // สร้างชุดข้อสอบจากผลกรอง / จากข้อที่ติ๊กเลือก
+  const navigate = useNavigate()
+  const [paperCount, setPaperCount] = React.useState(50)
+  const [balance, setBalance] = React.useState(true)
+  const [picked, setPicked] = React.useState<Set<string>>(new Set())
+  const togglePick = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const [confirmHideBroken, setConfirmHideBroken] = React.useState(false)
   const [q, setQ] = React.useState('')
   const [page, setPage] = React.useState(1)
@@ -141,6 +154,28 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
     if (error) return toast(`บันทึกไม่สำเร็จ: ${error.message}`, 'error')
     toast(`พักไว้ ${ids.length} ข้อแล้ว — ดูได้จากตัวกรองสถานะ "พักไว้"`, 'success')
     reload()
+  }
+
+  // ข้อที่ใช้จัดชุดได้: ผ่านตัวกรอง + สถานะใช้งาน + ตัวเลือกกรอกครบ
+  const usable = filtered.filter((it) => it.status === 'ใช้งาน' && !hasPlaceholderChoice(it))
+  const paperTitle = () => {
+    const parts = [allGrades ? (grade || 'คลังรวม') : itemGradeLevel({ grade_level: items[0]?.grade_level })]
+    if (school) parts.push(schoolMap.get(school)?.name_th ?? school)
+    if (year) parts.push(`ปี ${year}`)
+    if (strand) parts.push(strand)
+    return `ชุดข้อสอบ ${parts.join(' ')}`
+  }
+  const buildRandom = () => {
+    const n = Math.max(1, Math.floor(paperCount) || 0)
+    if (usable.length === 0) return toast('ไม่มีข้อที่ใช้ได้ในผลกรองนี้', 'error')
+    const result = quickPaperFromPool(usable, n, balance)
+    if (usable.length < n) toast(`ผลกรองมีข้อใช้ได้แค่ ${usable.length} ข้อ จึงได้ชุด ${result.items.length} ข้อ`, 'info')
+    navigate('/print', { state: { generatedResult: result, paperName: `${paperTitle()} (${result.items.length} ข้อ)` } })
+  }
+  const buildPicked = () => {
+    const rows = items.filter((it) => picked.has(it.item_id))
+    if (rows.length === 0) return
+    navigate('/print', { state: { generatedResult: itemsToResult(rows), paperName: `ชุดข้อสอบที่เลือกเอง (${rows.length} ข้อ)` } })
   }
 
   const years = Array.from(new Set(items.map((i) => i.year))).sort((a, b) => b - a)
@@ -297,6 +332,43 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
         </CardContent>
       </Card>
 
+      {/* สร้างชุดข้อสอบจากผลกรอง */}
+      <Card className="border-gold-300 bg-gold-50/40">
+        <CardContent className="pt-4 flex flex-wrap items-center gap-3 text-sm">
+          <span className="font-semibold text-navy-800">สร้างชุดข้อสอบจากผลกรองนี้</span>
+          <label className="flex items-center gap-2">
+            จำนวนข้อ
+            <Input
+              type="number"
+              min={1}
+              className="h-9 w-24"
+              value={paperCount}
+              onChange={(e) => setPaperCount(Number(e.target.value))}
+            />
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input type="checkbox" checked={balance} onChange={(e) => setBalance(e.target.checked)} />
+            กระจายตามสาระ
+          </label>
+          <span className="text-muted-foreground">ใช้ได้ {usable.length.toLocaleString()} ข้อ (ไม่รวมข้อที่พักไว้/กรอกไม่เสร็จ)</span>
+          <div className="ml-auto flex flex-wrap gap-2">
+            {picked.size > 0 && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setPicked(new Set())}>
+                  ล้างที่เลือก
+                </Button>
+                <Button variant="outline" size="sm" onClick={buildPicked}>
+                  ใช้ข้อที่ติ๊กไว้ ({picked.size} ข้อ)
+                </Button>
+              </>
+            )}
+            <Button size="sm" variant="orange" onClick={buildRandom} disabled={usable.length === 0}>
+              สุ่ม {Math.min(paperCount || 0, usable.length)} ข้อ → พิมพ์
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -304,6 +376,7 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
             <table className="w-full text-sm">
               <thead className="bg-navy-50 text-navy-800">
                 <tr>
+                  <th className="px-3 py-2 w-8" title="ติ๊กเพื่อเลือกข้อเข้าชุดเอง" />
                   <th className="px-3 py-2 text-left font-semibold">item_id</th>
                   {allGrades && <th className="px-3 py-2 text-left font-semibold">ชั้น</th>}
                   <th className="px-3 py-2 text-left font-semibold">ที่มา</th>
@@ -318,10 +391,10 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
               </thead>
               <tbody className="divide-y divide-border">
                 {loading &&
-                  Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} cols={9} />)}
+                  Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} cols={allGrades ? 11 : 10} />)}
                 {!loading && pageItems.length === 0 && (
                   <tr>
-                    <td colSpan={allGrades ? 10 : 9} className="text-center py-12 text-muted-foreground text-sm">
+                    <td colSpan={allGrades ? 11 : 10} className="text-center py-12 text-muted-foreground text-sm">
                       ไม่พบข้อสอบตามเงื่อนไขที่เลือก
                     </td>
                   </tr>
@@ -333,6 +406,14 @@ export default function ItemBankPage({ allGrades = false }: { allGrades?: boolea
                       className="hover:bg-navy-50/50 cursor-pointer"
                       onClick={() => setDetailItem(it)}
                     >
+                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label={`เลือก ${it.item_id}`}
+                          checked={picked.has(it.item_id)}
+                          onChange={() => togglePick(it.item_id)}
+                        />
+                      </td>
                       <td className="px-3 py-2 font-mono text-xs text-navy-600">{it.item_id}</td>
                       {allGrades && <td className="px-3 py-2 text-xs whitespace-nowrap">{itemGradeLevel(it)}</td>}
                       <td className="px-3 py-2 text-xs">{originLabel(it, schoolMap)}</td>
