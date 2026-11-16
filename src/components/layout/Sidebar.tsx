@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useGradeLevel } from '@/contexts/GradeLevelContext'
+import { GRADE_LEVELS, GRADE_LEVEL_LABEL, type GradeLevel } from '@/lib/vocab'
 import { cn } from '@/lib/utils'
 
 const menuItems = [
@@ -27,6 +29,7 @@ const menuItems = [
 
 export function Sidebar() {
   const { user, signOut } = useAuth()
+  const { gradeLevel, setGradeLevel } = useGradeLevel()
   const [open, setOpen] = React.useState(false)
 
   const content = (
@@ -39,6 +42,24 @@ export function Sidebar() {
           <p className="text-white font-bold text-sm leading-tight truncate">SocialBank</p>
           <p className="text-orange-300 text-xs truncate">สังคมศึกษา ครูน็อค</p>
         </div>
+      </div>
+
+      <div className="px-4 pt-4">
+        <label htmlFor="grade-level" className="block text-xs text-orange-300 mb-1">
+          ระดับชั้นของคลังข้อสอบ
+        </label>
+        <select
+          id="grade-level"
+          value={gradeLevel}
+          onChange={(e) => setGradeLevel(e.target.value as GradeLevel)}
+          className="w-full rounded-lg bg-navy-700 text-white text-sm px-3 py-2 border border-navy-500 focus:outline-none focus:ring-2 focus:ring-orange-400"
+        >
+          {GRADE_LEVELS.map((g) => (
+            <option key={g} value={g}>
+              {GRADE_LEVEL_LABEL[g]}
+            </option>
+          ))}
+        </select>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
